@@ -814,8 +814,40 @@ if st.session_state.step > 0:
 # ------------------------------------------------------------------
 # DB 관리 섹션 (CSV Import/Export 추가로 기능 고도화)
 # ------------------------------------------------------------------
+# ------------------------------------------------------------------
+# 설정 및 DB 관리 섹션 (종합 컨트롤 패널)
+# ------------------------------------------------------------------
 if st.session_state.step >= 1:
-    with st.expander("⚙️ 원료 단가 데이터베이스 관리 (Raw Material DB)"):
+    with st.expander("⚙️ 시스템 설정 및 원료 데이터베이스 관리"):
+        st.markdown("### 🔑 Gemini API 설정")
+        col_api1, col_api2 = st.columns(2)
+        with col_api1:
+            settings_key = st.text_input(
+                "Gemini API Key", 
+                value=st.session_state.api_key, 
+                type="password", 
+                placeholder="AIzaSy... 입력",
+                help="설정된 API 키입니다. 다른 키로 변경하려면 입력해 주세요."
+            )
+            if settings_key != st.session_state.api_key:
+                st.session_state.api_key = settings_key.strip()
+                st.rerun()
+        with col_api2:
+            model_options = ["gemini-2.5-flash", "gemini-2.5-pro"]
+            model_index = 0
+            if st.session_state.model_name in model_options:
+                model_index = model_options.index(st.session_state.model_name)
+            settings_model = st.selectbox(
+                "사용할 Gemini AI 모델", 
+                model_options, 
+                index=model_index
+            )
+            if settings_model != st.session_state.model_name:
+                st.session_state.model_name = settings_model
+                st.rerun()
+                
+        st.markdown("---")
+        st.markdown("### 📁 원료 단가 데이터베이스 관리 (Raw Material DB)")
         st.caption("라벨에서 추출된 원료 중 신규 원료는 단가 15원/g의 임시 원료로 자동 추가됩니다.")
         
         # CSV 내보내기 및 가져오기 UI
@@ -950,7 +982,10 @@ elif st.session_state.step == 2:
                         st.success("성분이 추출되었습니다! 아래 성분 리스트에서 수정해 주세요.")
                         st.rerun()
                     except Exception as e:
+                        import traceback
                         st.error(f"성분 추출에 실패했습니다: {e}")
+                        with st.expander("🛠️ 상세 에러 로그 (디버깅용)"):
+                            st.code(traceback.format_exc())
         else:
             st.write("업로드된 라벨이 없습니다. 원료 DB에 있는 성분들을 활용하여 **인공지능의 신규 배합 설계**를 바로 시작합니다.")
             
@@ -1010,7 +1045,10 @@ elif st.session_state.step == 2:
             st.rerun()
         except Exception as e:
             placeholder.empty()
+            import traceback
             st.error(f"처방 설계에 실패했습니다: {e}")
+            with st.expander("🛠️ 상세 에러 로그 (디버깅용)"):
+                st.code(traceback.format_exc())
             st.caption("Gemini API 키 상태와 쿼리 한도를 다시 한번 점검해 주세요.")
     st.markdown('</div>', unsafe_allow_html=True)
 
