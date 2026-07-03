@@ -462,6 +462,8 @@ def merge_extracted_into_db(ingredient_text):
         st.session_state.db = pd.concat(
             [st.session_state.db, pd.DataFrame(new_rows)], ignore_index=True
         )
+        if "db_editor" in st.session_state:
+            del st.session_state["db_editor"]
     return len(new_rows)
 
 from pydantic import BaseModel, Field
@@ -477,15 +479,14 @@ def generate_formulation(ftype, db_df, existing_ingredients=None):
     db_names = db_df["name"].tolist()
 
     if existing_ingredients:
-        base_instruction = f"""아래는 사용자가 라벨에서 직접 영역을 지정해서 추출한 기존 제품의 전성분 목록임. 이 성분들을 배합의 기본 뼈대로 삼아서 최적화해야 함 (임의로 무시하고 새로 만들면 안 됨):
-검출된 성분: {existing_ingredients}
+        base_instruction = f"""아래는 사용자가 직접 입력하거나 라벨에서 추출한 기존 제품의 전성분 목록입니다. 이 성분들을 처방의 기본 뼈대로 삼아 100% 반영하여 최적화해야 합니다:
+검출 성분: {existing_ingredients}
 
-작업 지시:
-1. 위 검출 성분 각각을 최대한 그대로 배합표에 포함시켜라.
-2. 검출 성분 중 보유 원료 DB에 있는 것과 이름이 다르면(예: 동의어, 표기 차이) 단가 매칭을 위해 DB 표기명으로 통일해서 사용해라.
-3. 검출 성분 중 DB에 없는 것은 새 원료로 그대로 추가해도 됨.
-4. 안정성/기능상 명백히 부족한 부분(방부제, 점증제 등)이 있으면 최소한만 보완해서 추가해라.
-5. 최종 배합비는 제형 특성에 맞게 새로 최적화해도 되지만, 성분 목록 자체는 검출된 것을 최대한 유지해라."""
+★ [필수 요구사항] ★
+1. 위 '검출 성분' 목록에 나열된 모든 성분들을 100% 빠짐없이 최종 배합 처방(Formulation)에 포함해야 합니다. 임의로 제외하거나 무시해서는 안 됩니다.
+2. 검출 성분 중 보유 원료 DB에 있는 성분과 이름이 유사하거나 동의어인 경우(예: 'Water' -> '정제수', 'Sodium Hyaluronate' -> '히알루론산'), 단가 매칭을 위해 반드시 보유 원료 DB의 이름으로 매칭하여 배합 처방에 사용해 주세요.
+3. 검출 성분 중 보유 원료 DB에 전혀 등록되어 있지 않은 성분이라도, 절대 누락하지 말고 배합 처방에 새 원료명 그대로 추가하고 그 기능을 한국어로 성질에 맞게 유추하여 작성하세요.
+4. 배합 비율(ratio)은 제형 특성에 맞추어 자유롭게 배분하되, 전체 원료 목록 자체는 검출된 성분을 전원 유지해야 합니다."""
     else:
         base_instruction = "기존 라벨 정보 없음. 아래 보유 원료 DB를 참고해서 신규 배합으로 설계해라."
 
@@ -536,45 +537,7 @@ def refine_formulation(ftype, db_df, current_raw_formulation, feedback_text):
     )
     return json.loads(resp.text)
 
-def generate_manufacturing_guide(ftype, formulation_df):
-    """처방에 특화된 제조 공정 가이드라인 생성"""
-    client = get_client()
-    raw_list = formulation_df[["상", "원료명", "배합비(%)", "기능"]].to_dict(orient="records")
-    
-    prompt = f"""너는 화장품 전문 제조 공학 엔지니어임. 아래 배합 설계표를 바탕으로, 연구원이 실험실이나 제조소에서 실제로 제품을 만들 때 참고할 수 있는 상세 제조 공정(Manufacturing Process Guide)을 작성해줘.
-
-제형 종류: {ftype['label']}
-배합표 리스트:
-{json.dumps(raw_list, ensure_ascii=False, indent=2)}
-
-요구사항:
-1. A상 (수상), B상 (유상), C상 (첨가상) 등의 원료들이 어떻게 혼합되고 가열(호모믹서 조건, 온도, 시간)되는지 가이드를 자세히 단계별로 서술하라.
-2. 예: 교반 속도, 유화 온도(보통 70~75도), 냉각 시점, C상 투입 온도(보통 40~45도 이하) 등을 구체적으로 명시하라.
-3. 최종 품질 검사 기준 권장 사항(pH, 외관 성상)을 간략히 포함하라.
-4. 결과물은 읽기 편하게 마크다운(Markdown) 포맷으로만 출력하라. (친절하고 정중한 한국어로 작성)
-"""
-    resp = client.models.generate_content(model=st.session_state.model_name, contents=[prompt])
-    return resp.text
-
-def generate_product_spec(ftype, formulation_df):
-    """처방의 특징, 추천 피부타입, 핵심 성분 효능 분석 리포트 생성"""
-    client = get_client()
-    raw_list = formulation_df[["상", "원료명", "배합비(%)", "기능"]].to_dict(orient="records")
-    
-    prompt = f"""너는 화장품 처방 분석가 및 피부 과학 전문가임. 아래 배합표를 철저히 검토하여 이 화장품의 피부 과학적 기대 효과 및 마케팅 스펙을 정리해줘.
-
-제형 종류: {ftype['label']}
-배합표 리스트:
-{json.dumps(raw_list, ensure_ascii=False, indent=2)}
-
-요구사항:
-1. **타겟 피부 타입**: 이 배합이 어떤 피부 타입(건성, 지성, 민감성 등)에 가장 적합한지 분석하고 그 근거를 제시하라.
-2. **핵심 효능/기능**: 처방된 원료들의 시너지를 분석하여 가장 우수한 피부 효능(예: 피부 장벽 강화, 보습력 향상, 미백 등)을 설명하라.
-3. **사용감/텍스처 예측**: 배합비(유상 성분 비율, 실리콘계 성분 등)에 근거해 실제 발랐을 때의 텍스처(산뜻함, 끈적임, 영양감 등)를 정밀 분석하라.
-4. 결과물은 마크다운(Markdown) 포맷으로 보기 쉽게 작성하라.
-"""
-    resp = client.models.generate_content(model=st.session_state.model_name, contents=[prompt])
-    return resp.text
+# 제조 공정 및 분석 리포트 생성기 함수 제거됨 (요구사항 반영)
 
 def normalize_and_cost(raw_items, db_df):
     total = sum(float(i["ratio"]) for i in raw_items)
@@ -783,6 +746,8 @@ with hcol2:
             st.session_state.step = 1
             st.session_state.ftype = None
             st.session_state.label_ingredients = None
+            if "ingredients_text_editor" in st.session_state:
+                st.session_state.ingredients_text_editor = ""
             st.session_state.label_original = None
             st.session_state.label_crop = None
             st.session_state.raw_formulation = None
@@ -979,7 +944,12 @@ elif st.session_state.step == 2:
                     try:
                         extracted = vision_extract_ingredients_from_crop(cropped_img)
                         st.session_state.label_ingredients = extracted
-                        st.success("성분이 추출되었습니다! 아래 성분 리스트에서 수정해 주세요.")
+                        st.session_state.ingredients_text_editor = extracted  # Update text_area widget state value directly
+                        
+                        # 즉시 원료 단가 데이터베이스에도 누락된 원료 병합
+                        merge_extracted_into_db(extracted)
+                        
+                        st.success("성분이 추출되어 아래 텍스트 상자 및 원료 DB에 반영되었습니다!")
                         st.rerun()
                     except Exception as e:
                         import traceback
@@ -993,11 +963,27 @@ elif st.session_state.step == 2:
         st.markdown('</div>', unsafe_allow_html=True)
 
     # ------------------------------------------------------------------
+    # 테스트용 샘플 라벨 이미지 및 텍스트 제공 (확인 유틸리티)
+    # ------------------------------------------------------------------
+    with st.expander("🧪 테스트용 샘플 라벨 정보 (이미지가 없는 경우 활용)"):
+        col_s1, col_s2 = st.columns([1, 2])
+        with col_s1:
+            sample_path = "sample_label.png"
+            if os.path.exists(sample_path):
+                st.image(sample_path, caption="샘플 라벨 이미지 (마우스 우클릭 다운로드 가능)", width=180)
+            else:
+                st.info("sample_label.png 파일이 프로젝트 폴더 내에 존재하지 않습니다.")
+        with col_s2:
+            st.write("📋 **추출 테스트용 성분 텍스트 (복사 가능):**")
+            st.code("정제수, 글리세린, 부틸렌글라이콜, 나이아신아마이드, 다이메티콘, 잔탄검, 히알루론산, 스쿠알란, 페녹시에탄올", language="text")
+            st.caption("위 성분 텍스트를 복사하여 아래의 '반영할 전성분 리스트'에 직접 붙여넣거나, 라벨 이미지를 업로드하고 크롭하여 텍스트를 추출해 보세요.")
+
+    # ------------------------------------------------------------------
     # 라벨 이미지 영역 지정 시 text 보여주고 수정 가능하게 (수정 가능 성분 텍스트 영역)
     # ------------------------------------------------------------------
     st.markdown('<div class="liquid-glass" style="margin-top: 16px;">', unsafe_allow_html=True)
     st.markdown("#### 📝 반영할 전성분 리스트 (직접 수정 · 추가 · 삭제 가능)")
-    st.write("라벨 이미지에서 성분을 추출하면 여기에 자동 입력되며, 쉼표(,)로 구분해 자유롭게 성분을 추가하거나 삭제하실 수 있습니다.")
+    st.write("라벨 이미지에서 성분을 추출하거나 직접 입력하면 여기에 표시되며, 자유롭게 성분을 추가하거나 삭제하실 수 있습니다.")
     
     ingredients_txt = st.text_area(
         "배합의 기본 뼈대가 될 성분 리스트 (쉼표로 구분)",
@@ -1025,20 +1011,16 @@ elif st.session_state.step == 2:
         </div>
         ''', unsafe_allow_html=True)
         try:
-            # Merge the edited text to DB
+            # 최종 수동 편집된 원료가 있으면 DB에 다시 병합
             if ingredients_txt.strip():
                 merge_extracted_into_db(ingredients_txt)
 
-            # Generate formulation
+            # 배합 생성
             raw = generate_formulation(ftype, st.session_state.db, ingredients_txt.strip() or None)
             st.session_state.raw_formulation = raw
             
             df = normalize_and_cost(raw, st.session_state.db)
             st.session_state.formulation = df
-            
-            # Generate guides
-            st.session_state.manufacturing_guide = generate_manufacturing_guide(ftype, df)
-            st.session_state.product_spec = generate_product_spec(ftype, df)
             
             st.session_state.step = 3
             placeholder.empty()
@@ -1131,7 +1113,7 @@ elif st.session_state.step == 3:
     st.markdown("<br>", unsafe_allow_html=True)
 
     # 결과물 고도화: 다양한 정보 확인용 탭 구성
-    tabs = st.tabs(["📊 배합 처방전 (Formulation)", "🔵 성분 다이어그램", "🛠️ 제조 공정 가이드 (Manufacturing)", "📝 제형 및 피부 효능 설명서"])
+    tabs = st.tabs(["📊 Formulation", "🔵 성분 다이어그램"])
     
     with tabs[0]:
         st.markdown('<div class="liquid-glass">', unsafe_allow_html=True)
@@ -1142,24 +1124,6 @@ elif st.session_state.step == 3:
         st.markdown('<div class="liquid-glass">', unsafe_allow_html=True)
         components.html(render_donut_html(df), height=470, scrolling=False)
         st.markdown('</div>', unsafe_allow_html=True)
-        
-    with tabs[2]:
-        st.markdown('<div class="liquid-glass">', unsafe_allow_html=True)
-        st.markdown('<div class="report-card">', unsafe_allow_html=True)
-        if st.session_state.manufacturing_guide:
-            st.markdown(st.session_state.manufacturing_guide)
-        else:
-            st.write("제조 가이드를 불러오는 데 실패했습니다.")
-        st.markdown('</div></div>', unsafe_allow_html=True)
-        
-    with tabs[3]:
-        st.markdown('<div class="liquid-glass">', unsafe_allow_html=True)
-        st.markdown('<div class="report-card">', unsafe_allow_html=True)
-        if st.session_state.product_spec:
-            st.markdown(st.session_state.product_spec)
-        else:
-            st.write("처방 설명서를 불러오는 데 실패했습니다.")
-        st.markdown('</div></div>', unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
     
@@ -1199,9 +1163,7 @@ elif st.session_state.step == 3:
                 df = normalize_and_cost(raw, st.session_state.db)
                 st.session_state.formulation = df
                 
-                # 제조 공정 및 분석 리포트 업데이트
-                st.session_state.manufacturing_guide = generate_manufacturing_guide(ftype, df)
-                st.session_state.product_spec = generate_product_spec(ftype, df)
+                # 제조 공정 및 분석 리포트 업데이트 생략 (요구사항 반영)
                 
                 placeholder.empty()
                 st.success("피드백이 성공적으로 반영되었습니다!")
