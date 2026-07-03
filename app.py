@@ -604,10 +604,28 @@ def polar(cx, cy, r, angle_deg):
     a = math.radians(angle_deg)
     return cx + r*math.sin(a), cy - r*math.cos(a)
 
+def get_phase_color(phase_name):
+    # 수상-red, 유상-green, 첨가-blue
+    phase_colors_map = {
+        "수상": "#EF4444",
+        "유상": "#22C55E",
+        "첨가": "#3B82F6",
+        "A상": "#EF4444",
+        "B상": "#22C55E",
+        "C상": "#3B82F6",
+        "A": "#EF4444",
+        "B": "#22C55E",
+        "C": "#3B82F6"
+    }
+    for key, val in phase_colors_map.items():
+        if key in phase_name:
+            return val
+    return "#94A3B8" # fallback grey
+
 def render_donut_html(df):
     cx, cy, r_outer, r_inner = 220, 220, 190, 105
     phases = df["상"].unique().tolist()
-    phase_color = {p: PHASE_PALETTE[i % len(PHASE_PALETTE)] for i, p in enumerate(phases)}
+    phase_color = {p: get_phase_color(p) for p in phases}
 
     segs = ""
     labels = ""
@@ -643,7 +661,7 @@ def render_donut_html(df):
       <div id="donut-zoomable" style="position:absolute; left:0; top:0; width:100%; height:100%;
            display:flex; align-items:center; justify-content:center; gap:24px; flex-wrap:wrap;
            transform-origin:0 0; will-change:transform; font-family:Inter,sans-serif;">
-        <svg viewBox="0 0 440 440" width="360" height="360">
+        <svg viewBox="0 0 440 440" width="300" height="300">
           {segs}
           {labels}
           <text x="220" y="210" text-anchor="middle" font-size="11" fill="#94a3b8" font-family="Inter,sans-serif" font-weight="600">TOTAL COST</text>
@@ -743,17 +761,22 @@ with hcol1:
 with hcol2:
     if st.session_state.step >= 1:
         if st.button("🏠 처음으로 (처방 초기화)", use_container_width=True):
+            # 1. Back up critical states
+            api_key = st.session_state.get("api_key", "")
+            model_name = st.session_state.get("model_name", "gemini-2.5-flash")
+            db = st.session_state.get("db")
+            
+            # 2. Clear all session states
+            st.session_state.clear()
+            
+            # 3. Restore critical states
+            st.session_state.api_key = api_key
+            st.session_state.model_name = model_name
+            if db is not None:
+                st.session_state.db = db
+                
+            # 4. Set step to 1 and rerun
             st.session_state.step = 1
-            st.session_state.ftype = None
-            st.session_state.label_ingredients = None
-            if "ingredients_text_editor" in st.session_state:
-                st.session_state.ingredients_text_editor = ""
-            st.session_state.label_original = None
-            st.session_state.label_crop = None
-            st.session_state.raw_formulation = None
-            st.session_state.formulation = None
-            st.session_state.manufacturing_guide = ""
-            st.session_state.product_spec = ""
             st.rerun()
 
 st.markdown("<br>", unsafe_allow_html=True)
@@ -850,7 +873,11 @@ if st.session_state.step >= 1:
                 "supplier": "공급사",
             },
         )
-        st.session_state.db = edited
+        if not edited.equals(st.session_state.db):
+            st.session_state.db = edited
+            if st.session_state.raw_formulation is not None:
+                st.session_state.formulation = normalize_and_cost(st.session_state.raw_formulation, edited)
+            st.rerun()
     st.markdown("<br>", unsafe_allow_html=True)
 
 # ------------------------------------------------------------------
@@ -1076,9 +1103,7 @@ elif st.session_state.step == 3:
             worksheet.set_row(n_data + 2, None, bold_format)
 
             phases_order = df["상"].tolist()
-            unique_phases = df["상"].unique().tolist()
-            phase_color = {p: PHASE_PALETTE[i % len(PHASE_PALETTE)] for i, p in enumerate(unique_phases)}
-            points = [{"fill": {"color": phase_color[p]}} for p in phases_order]
+            points = [{"fill": {"color": get_phase_color(p)}} for p in phases_order]
 
             chart = workbook.add_chart({"type": "doughnut"})
             chart.add_series({
@@ -1112,18 +1137,16 @@ elif st.session_state.step == 3:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # 결과물 고도화: 다양한 정보 확인용 탭 구성
-    tabs = st.tabs(["📊 Formulation", "🔵 성분 다이어그램"])
-    
-    with tabs[0]:
-        st.markdown('<div class="liquid-glass">', unsafe_allow_html=True)
+    # Formulation 테이블과 성분 다이어그램을 한 페이지에 side-by-side 컬럼으로 배치
+    st.markdown('<div class="liquid-glass">', unsafe_allow_html=True)
+    col_table, col_chart = st.columns([1.3, 1])
+    with col_table:
+        st.markdown("#### 📊 Formulation")
         st.markdown(render_table_html(df), unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-    with tabs[1]:
-        st.markdown('<div class="liquid-glass">', unsafe_allow_html=True)
+    with col_chart:
+        st.markdown("#### 🔵 성분 다이어그램")
         components.html(render_donut_html(df), height=470, scrolling=False)
-        st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
     
