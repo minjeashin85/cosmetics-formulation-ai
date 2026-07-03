@@ -464,6 +464,14 @@ def merge_extracted_into_db(ingredient_text):
         )
     return len(new_rows)
 
+from pydantic import BaseModel, Field
+
+class IngredientItem(BaseModel):
+    phase: str = Field(description="배합 상. A상 (수상), B상 (유상), C상 (첨가) 등")
+    name: str = Field(description="원료명 (한글)")
+    function: str = Field(description="원료의 효능 및 기능")
+    ratio: float = Field(description="배합비 상대적 비율 수치 (양수)")
+
 def generate_formulation(ftype, db_df, existing_ingredients=None):
     client = get_client()
     db_names = db_df["name"].tolist()
@@ -489,19 +497,16 @@ def generate_formulation(ftype, db_df, existing_ingredients=None):
 
 보유 원료 DB 목록(단가 매칭용, 참고):
 {', '.join(db_names)}
-
-출력은 반드시 아래 JSON 배열 형식만 출력하고 다른 설명, 마크다운 코드블록 표시는 절대 넣지 마.
-[
-  {{"phase": "A상 (수상)", "name": "원료명", "function": "기능(한글)", "ratio": 숫자}},
-  ...
-]
-- ratio는 상대적 비율 숫자(합계가 정확히 100일 필요는 없음, 이후 정규화함)
-- 최소 8개 이상 최대 16개 이하 원료로 구성
-- phase는 "A상 (수상)", "B상 (유상)", "C상 (첨가)" 중 제형 특성에 맞게 사용
 """
-    resp = client.models.generate_content(model=st.session_state.model_name, contents=[prompt])
-    text = re.sub(r"^```json|^```|```$", "", resp.text.strip(), flags=re.MULTILINE).strip()
-    return json.loads(text)
+    resp = client.models.generate_content(
+        model=st.session_state.model_name,
+        contents=[prompt],
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=list[IngredientItem]
+        )
+    )
+    return json.loads(resp.text)
 
 def refine_formulation(ftype, db_df, current_raw_formulation, feedback_text):
     """기존 배합표와 사용자의 피드백을 기반으로 배합 비율을 재조정"""
@@ -520,20 +525,16 @@ def refine_formulation(ftype, db_df, current_raw_formulation, feedback_text):
 
 보유 원료 DB 목록(참고):
 {', '.join(db_names)}
-
-작업 지시:
-1. 사용자 피드백 요구사항에 맞춰 원료 비율(ratio)을 증감하거나, 새로운 원료를 추가 혹은 불필요한 원료를 삭제하라.
-2. 추가되는 원료가 있다면 가급적 보유 원료 DB에서 찾아서 이름이 일치하도록 사용하라.
-3. 원료의 phase(A상, B상, C상)는 화학적 성질에 맞게 지정하라.
-4. 출력은 반드시 아래 JSON 배열 형식만 출력하고 다른 설명이나 마크다운 코드블록 표시는 절대 넣지 마.
-[
-  {{"phase": "A상 (수상)", "name": "원료명", "function": "기능(한글)", "ratio": 숫자}},
-  ...
-]
 """
-    resp = client.models.generate_content(model=st.session_state.model_name, contents=[prompt])
-    text = re.sub(r"^```json|^```|```$", "", resp.text.strip(), flags=re.MULTILINE).strip()
-    return json.loads(text)
+    resp = client.models.generate_content(
+        model=st.session_state.model_name,
+        contents=[prompt],
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=list[IngredientItem]
+        )
+    )
+    return json.loads(resp.text)
 
 def generate_manufacturing_guide(ftype, formulation_df):
     """처방에 특화된 제조 공정 가이드라인 생성"""
@@ -939,51 +940,79 @@ elif st.session_state.step == 2:
             st.write("선택된 성분표 크롭 영역:")
             st.image(cropped_img, width=240)
             st.session_state.label_crop = cropped_img
+            
+            # Button to trigger OCR
+            if st.button("🔍 지정 영역에서 성분 텍스트 추출", use_container_width=True):
+                with st.spinner("성분표 텍스트 분석 중..."):
+                    try:
+                        extracted = vision_extract_ingredients_from_crop(cropped_img)
+                        st.session_state.label_ingredients = extracted
+                        st.success("성분이 추출되었습니다! 아래 성분 리스트에서 수정해 주세요.")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"성분 추출에 실패했습니다: {e}")
         else:
             st.write("업로드된 라벨이 없습니다. 원료 DB에 있는 성분들을 활용하여 **인공지능의 신규 배합 설계**를 바로 시작합니다.")
             
-        st.markdown("<br><br>", unsafe_allow_html=True)
-        
-        if st.button("⚡ AI 배합 처방 설계 실행", type="primary", use_container_width=True):
-            placeholder = st.empty()
-            placeholder.markdown('''
-            <div class="liquid-glass cfa-loading-box">
-              <div class="cfa-ring-wrap">
-                <div class="cfa-ring"></div><div class="cfa-ring d2"></div>
-                <div class="cfa-core"></div><div class="cfa-core-inner">🧪</div>
-              </div>
-              <div class="cfa-loading-label">Gemini AI · Processing</div>
-              <div class="cfa-loading-msg">화학적 상용성 최적화 및 원가 설계 분석 중...</div>
-            </div>
-            ''', unsafe_allow_html=True)
-            try:
-                existing = None
-                if cropped_img is not None:
-                    # 성분 텍스트 추출
-                    existing = vision_extract_ingredients_from_crop(cropped_img)
-                    st.session_state.label_ingredients = existing
-                    # DB에 누락된 원료 병합
-                    merge_extracted_into_db(existing)
-
-                # 배합 생성
-                raw = generate_formulation(ftype, st.session_state.db, existing)
-                st.session_state.raw_formulation = raw
-                
-                df = normalize_and_cost(raw, st.session_state.db)
-                st.session_state.formulation = df
-                
-                # 제조 공정 및 스펙 리포트 사전 생성
-                st.session_state.manufacturing_guide = generate_manufacturing_guide(ftype, df)
-                st.session_state.product_spec = generate_product_spec(ftype, df)
-                
-                st.session_state.step = 3
-                placeholder.empty()
-                st.rerun()
-            except Exception as e:
-                placeholder.empty()
-                st.error(f"처방 설계에 실패했습니다: {e}")
-                st.caption("Gemini API 키 상태와 쿼리 한도를 다시 한번 점검해 주세요.")
+        st.markdown("<br>", unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
+
+    # ------------------------------------------------------------------
+    # 라벨 이미지 영역 지정 시 text 보여주고 수정 가능하게 (수정 가능 성분 텍스트 영역)
+    # ------------------------------------------------------------------
+    st.markdown('<div class="liquid-glass" style="margin-top: 16px;">', unsafe_allow_html=True)
+    st.markdown("#### 📝 반영할 전성분 리스트 (직접 수정 · 추가 · 삭제 가능)")
+    st.write("라벨 이미지에서 성분을 추출하면 여기에 자동 입력되며, 쉼표(,)로 구분해 자유롭게 성분을 추가하거나 삭제하실 수 있습니다.")
+    
+    ingredients_txt = st.text_area(
+        "배합의 기본 뼈대가 될 성분 리스트 (쉼표로 구분)",
+        value=st.session_state.label_ingredients or "",
+        placeholder="예: 정제수, 글리세린, 부틸렌글라이콜, 나이아신아마이드 (또는 라벨 이미지를 올려 추출해 주세요)",
+        height=120,
+        label_visibility="collapsed",
+        key="ingredients_text_editor"
+    )
+    st.session_state.label_ingredients = ingredients_txt  # Sync back to state
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # "AI 배합 실행" 버튼 (번개 표시 대신 AI 관련 🤖 아이콘, 화장품 관련 로딩 🧴 애니메이션)
+    if st.button("🤖 AI 배합 실행", type="primary", use_container_width=True):
+        placeholder = st.empty()
+        placeholder.markdown('''
+        <div class="liquid-glass cfa-loading-box">
+          <div class="cfa-ring-wrap">
+            <div class="cfa-ring"></div><div class="cfa-ring d2"></div>
+            <div class="cfa-core"></div><div class="cfa-core-inner">🧴</div>
+          </div>
+          <div class="cfa-loading-label">Gemini AI · SKINCARE FORMULATION</div>
+          <div class="cfa-loading-msg">원료 상용성 분석 및 맞춤형 스킨케어 배합 구성 중...</div>
+        </div>
+        ''', unsafe_allow_html=True)
+        try:
+            # Merge the edited text to DB
+            if ingredients_txt.strip():
+                merge_extracted_into_db(ingredients_txt)
+
+            # Generate formulation
+            raw = generate_formulation(ftype, st.session_state.db, ingredients_txt.strip() or None)
+            st.session_state.raw_formulation = raw
+            
+            df = normalize_and_cost(raw, st.session_state.db)
+            st.session_state.formulation = df
+            
+            # Generate guides
+            st.session_state.manufacturing_guide = generate_manufacturing_guide(ftype, df)
+            st.session_state.product_spec = generate_product_spec(ftype, df)
+            
+            st.session_state.step = 3
+            placeholder.empty()
+            st.rerun()
+        except Exception as e:
+            placeholder.empty()
+            st.error(f"처방 설계에 실패했습니다: {e}")
+            st.caption("Gemini API 키 상태와 쿼리 한도를 다시 한번 점검해 주세요.")
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # ------------------------------------------------------------------
 # STEP 3: 설계 결과 대시보드
