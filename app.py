@@ -1,0 +1,1163 @@
+import streamlit as st
+import streamlit.components.v1 as components
+import pandas as pd
+import json
+import re
+import io
+import os
+import math
+from io import BytesIO
+from PIL import Image
+import sys
+
+# 1. Ensure user site-packages is in sys.path
+user_site_packages = os.path.expandvars(
+    r"%USERPROFILE%\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\LocalCache\local-packages\Python312\site-packages"
+)
+if os.path.exists(user_site_packages):
+    if user_site_packages not in sys.path:
+        sys.path.insert(0, user_site_packages)
+
+# 2. Fix the google namespace path conflict
+try:
+    import google
+    if hasattr(google, "__path__"):
+        google_local = os.path.join(user_site_packages, "google")
+        if os.path.exists(google_local) and google_local not in google.__path__:
+            google.__path__ = [google_local] + list(google.__path__)
+except Exception:
+    pass
+
+from google import genai
+from google.genai import types
+from streamlit_cropper import st_cropper
+
+st.set_page_config(page_title="Cosmetics Formulation AI", page_icon="🧪", layout="wide")
+
+# ------------------------------------------------------------------
+# API 키 초기화 및 환경 변수 자동 인식
+# ------------------------------------------------------------------
+if "api_key" not in st.session_state:
+    # 1. Environment variable
+    env_key = os.environ.get("GEMINI_API_KEY", "")
+    # 2. Streamlit secrets
+    secrets_key = ""
+    try:
+        secrets_key = st.secrets.get("GEMINI_API_KEY", "")
+    except Exception:
+        pass
+    
+    st.session_state.api_key = env_key or secrets_key
+    st.session_state.step = 1 if st.session_state.api_key else 0
+
+# ------------------------------------------------------------------
+# 세션 상태 기본값 설정
+# ------------------------------------------------------------------
+DEFAULT_DB = [
+    {"name": "정제수", "inci": "Water", "unit_cost": 2, "supplier": "삼성정밀"},
+    {"name": "글리세린", "inci": "Glycerin", "unit_cost": 15, "supplier": "동화약품"},
+    {"name": "부틸렌글라이콜", "inci": "Butylene Glycol", "unit_cost": 12, "supplier": "동화약품"},
+    {"name": "나이아신아마이드", "inci": "Niacinamide", "unit_cost": 45, "supplier": "대봉엘에스"},
+    {"name": "세테아릴알코올", "inci": "Cetearyl Alcohol", "unit_cost": 20, "supplier": "코스맥스"},
+    {"name": "다이메티콘", "inci": "Dimethicone", "unit_cost": 18, "supplier": "다우코닝"},
+    {"name": "잔탄검", "inci": "Xanthan Gum", "unit_cost": 60, "supplier": "대봉엘에스"},
+    {"name": "페녹시에탄올", "inci": "Phenoxyethanol", "unit_cost": 25, "supplier": "동화약품"},
+    {"name": "토코페롤", "inci": "Tocopherol", "unit_cost": 80, "supplier": "BASF"},
+    {"name": "히알루론산", "inci": "Sodium Hyaluronate", "unit_cost": 250, "supplier": "대봉엘에스"},
+    {"name": "세틸에틸헥사노에이트", "inci": "Cetyl Ethylhexanoate", "unit_cost": 22, "supplier": "코스맥스"},
+    {"name": "폴리소르베이트60", "inci": "Polysorbate 60", "unit_cost": 30, "supplier": "크로다"},
+    {"name": "소르비탄스테아레이트", "inci": "Sorbitan Stearate", "unit_cost": 28, "supplier": "크로다"},
+    {"name": "스쿠알란", "inci": "Squalane", "unit_cost": 95, "supplier": "아모레퍼시픽"},
+    {"name": "알란토인", "inci": "Allantoin", "unit_cost": 40, "supplier": "대봉엘에스"},
+]
+
+for key, default in [
+    ("db", pd.DataFrame(DEFAULT_DB)),
+    ("model_name", "gemini-2.5-flash"),
+    ("ftype", None),
+    ("label_ingredients", None),
+    ("label_original", None),
+    ("label_crop", None),
+    ("raw_formulation", None),
+    ("formulation", None),
+    ("manufacturing_guide", ""),
+    ("product_spec", ""),
+]:
+    if key not in st.session_state:
+        st.session_state[key] = default
+
+# ------------------------------------------------------------------
+# 마우스 반응형 리퀴드 글라스 스포트라이트
+# ------------------------------------------------------------------
+components.html("""
+<script>
+(function() {
+  const doc = window.parent.document;
+  function ensureSpot() {
+    let spot = doc.getElementById('cfa-spotlight');
+    if (!spot) {
+      spot = doc.createElement('div');
+      spot.id = 'cfa-spotlight';
+      spot.style.position = 'fixed';
+      spot.style.inset = '0';
+      spot.style.pointerEvents = 'none';
+      spot.style.zIndex = '0';
+      spot.style.transition = 'background 0.08s ease-out';
+      doc.body.appendChild(spot);
+    }
+    return spot;
+  }
+  ensureSpot();
+  doc.addEventListener('mousemove', function(e) {
+    const s = ensureSpot();
+    s.style.background =
+      'radial-gradient(750px circle at ' + e.clientX + 'px ' + e.clientY + 'px, rgba(37,99,235,0.12), rgba(99,102,241,0.04) 35%, transparent 60%)';
+  });
+})();
+</script>
+""", height=0)
+
+# ------------------------------------------------------------------
+# CSS (디자인 고도화)
+# ------------------------------------------------------------------
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif; }
+.stApp { background: #fafafa; }
+
+/* 배경 장식 애니메이션 블롭 */
+.cfa-blob { position: fixed; border-radius: 50%; filter: blur(100px); opacity: 0.35; z-index: -1; pointer-events:none; }
+.cfa-blob1 { width: 500px; height: 500px; background: radial-gradient(circle, #60a5fa, transparent 70%); top: -150px; left: -100px; animation: floatA 22s ease-in-out infinite; }
+.cfa-blob2 { width: 450px; height: 450px; background: radial-gradient(circle, #818cf8, transparent 70%); bottom: -180px; right: -80px; animation: floatB 26s ease-in-out infinite; }
+.cfa-blob3 { width: 350px; height: 350px; background: radial-gradient(circle, #38bdf8, transparent 70%); top: 35%; left: 45%; animation: floatC 28s ease-in-out infinite; opacity:0.18; }
+@keyframes floatA { 0%,100%{transform:translate(0,0) scale(1);} 50%{transform:translate(80px,60px) scale(1.05);} }
+@keyframes floatB { 0%,100%{transform:translate(0,0) scale(1);} 50%{transform:translate(-70px,-50px) scale(1.08);} }
+@keyframes floatC { 0%,100%{transform:translate(0,0);} 50%{transform:translate(-50px,70px);} }
+
+/* 헤더 & 네비게이션 */
+.cfa-header-row { display:flex; align-items:center; justify-content:space-between; padding: 12px 6px; position:relative; z-index:2; border-bottom: 1px solid rgba(226, 232, 240, 0.6); }
+.cfa-brand { display:flex; align-items:center; gap:16px; }
+.cfa-brand .badge { width:48px; height:48px; border-radius:16px; background: linear-gradient(135deg, #2563EB, #4f46e5); display:flex; align-items:center; justify-content:center; font-size:24px; box-shadow: 0 8px 24px rgba(37,99,235,0.25); }
+.cfa-brand h1 { font-family:'Space Grotesk',sans-serif; font-size:24px; font-weight:700; color:#0F172A; margin:0; line-height:1.1; }
+.cfa-brand p { font-size:11px; color:#64748b; letter-spacing:1.8px; text-transform:uppercase; margin:2px 0 0 0; }
+
+/* 단계 표시 인디케이터 (Stepper) */
+.cfa-stepper { display: flex; align-items: center; justify-content: center; gap: 16px; margin: 24px 0; font-family: 'Space Grotesk', sans-serif; }
+.cfa-step { display: flex; align-items: center; gap: 8px; padding: 8px 18px; border-radius: 999px; background: rgba(255,255,255,0.7); border: 1px solid rgba(226,232,240,0.8); font-size: 13.5px; font-weight: 600; color: #64748b; transition: all 0.3s; }
+.cfa-step.active { background: linear-gradient(135deg, rgba(37,99,235,0.1), rgba(99,102,241,0.1)); border-color: rgba(37,99,235,0.4); color: #2563EB; box-shadow: 0 4px 12px rgba(37,99,235,0.06); }
+.cfa-step.done { background: rgba(255,255,255,0.9); border-color: #3b82f6; color: #1e3a8a; }
+.cfa-step-arrow { color: #cbd5e1; font-weight: bold; }
+
+/* 리퀴드 글라스 프리미엄 카드 디자인 */
+.liquid-glass {
+    position: relative; border-radius: 24px;
+    background: linear-gradient(160deg, rgba(255,255,255,0.75), rgba(255,255,255,0.45));
+    backdrop-filter: blur(20px) saturate(190%);
+    -webkit-backdrop-filter: blur(20px) saturate(190%);
+    border: 1px solid rgba(255,255,255,0.95);
+    box-shadow: 0 12px 36px rgba(15,23,42,0.05), inset 0 1px 1px rgba(255,255,255,0.9), inset 0 -1px 8px rgba(148,163,184,0.08);
+    overflow: hidden; z-index:1; padding: 24px;
+}
+.liquid-glass::before { content: ""; position: absolute; top:0; left:10%; right:10%; height:1.5px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent); }
+
+/* 제형 선택 그리드 및 호버 효과 */
+.cfa-type-grid div[data-testid="column"] { position: relative; }
+.cfa-tile { padding: 20px 8px 12px 8px; text-align:center; margin-bottom: 14px; display:flex; flex-direction:column; align-items:center; }
+.cfa-icon-wrap { width: 140px; height: 140px; margin: 0 auto; transition: transform .45s cubic-bezier(.175,.885,.32,1.275), filter .45s; }
+.cfa-type-grid div[data-testid="column"]:hover .cfa-icon-wrap {
+    transform: scale(1.15) rotate(-3deg);
+    filter: drop-shadow(0 20px 28px rgba(37,99,235,0.28));
+}
+.cfa-name-pill {
+    position: relative; overflow: hidden;
+    display:inline-flex; align-items:center; justify-content:center;
+    margin-top:12px; padding: 8px 24px; border-radius:999px;
+    background: linear-gradient(160deg, rgba(255,255,255,0.85), rgba(255,255,255,0.55));
+    backdrop-filter: blur(14px);
+    border:1px solid rgba(255,255,255,0.9);
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px; color:#0F172A;
+    box-shadow: 0 4px 16px rgba(15,23,42,0.05), inset 0 1px 1px rgba(255,255,255,0.8);
+    transition: all .35s cubic-bezier(.2,.8,.2,1);
+    width: max-content; white-space: nowrap;
+}
+.cfa-name-pill::before {
+    content: ""; position:absolute; top:-60%; left:-30%; width:60%; height:220%;
+    background: linear-gradient(120deg, rgba(255,255,255,0.6), transparent 60%);
+    transform: rotate(20deg); pointer-events:none; z-index:2;
+}
+.cfa-name-pill::after {
+    content: ""; position:absolute; width:24px; height:24px; border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.95), rgba(147,197,253,0.2) 70%);
+    top:50%; left:10%;
+    animation: cfaDropletA 5s ease-in-out infinite;
+    pointer-events:none; z-index:1;
+}
+.cfa-liquid-drop2 {
+    content: ""; position:absolute; width:14px; height:14px; border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.9), rgba(99,102,241,0.2) 70%);
+    top:60%; left:60%;
+    animation: cfaDropletB 3.5s ease-in-out infinite;
+    pointer-events:none; z-index:1;
+}
+@keyframes cfaDropletA {
+    0%   { transform: translate(0,-50%) scale(0.8); opacity:0.4; }
+    30%  { transform: translate(70px,-65%) scale(1.15); opacity:0.85; }
+    60%  { transform: translate(140px,-35%) scale(0.75); opacity:0.5; }
+    100% { transform: translate(0,-50%) scale(0.8); opacity:0.4; }
+}
+@keyframes cfaDropletB {
+    0%   { transform: translate(0,0) scale(0.6); opacity:0.3; }
+    40%  { transform: translate(-50px,-20px) scale(1.05); opacity:0.8; }
+    100% { transform: translate(0,0) scale(0.6); opacity:0.3; }
+}
+.cfa-type-grid div[data-testid="column"]:hover .cfa-name-pill {
+    background: linear-gradient(135deg, rgba(37,99,235,0.7), rgba(99,102,241,0.65));
+    border-color: rgba(255,255,255,0.5);
+    color:#fff; transform: translateY(-4px) scale(1.05);
+    box-shadow: 0 16px 36px rgba(37,99,235,0.28), inset 0 1px 1px rgba(255,255,255,0.4);
+}
+.cfa-type-grid div[data-testid="column"] .stButton {
+    position: absolute; inset: 0; z-index: 5; margin: 0 !important; height: 100%;
+}
+.cfa-type-grid div[data-testid="column"] .stButton button {
+    width: 100%; height: 100%; opacity: 0 !important; cursor: pointer; margin:0; padding:0; border:none !important;
+    background: transparent !important; box-shadow:none !important; border-radius: 24px;
+}
+
+/* SVG 아이콘 내부 부품 호버 애니메이션 */
+@keyframes cfaWobble { 0%{transform:rotate(0);} 25%{transform:rotate(-4deg);} 50%{transform:rotate(3deg);} 75%{transform:rotate(-1.5deg);} 100%{transform:rotate(0);} }
+@keyframes cfaCapPop { 0%,100%{transform:translateY(0);} 45%{transform:translateY(-6px);} }
+@keyframes cfaBubbleUp { 0%{transform:translateY(0) scale(0.5); opacity:0;} 25%{opacity:1; transform:translateY(-8px) scale(1);} 100%{transform:translateY(-36px) scale(0.4); opacity:0;} }
+@keyframes cfaShineSweep { 0%{transform:translateX(-35px); opacity:0;} 35%{opacity:.9;} 100%{transform:translateX(35px); opacity:0;} }
+.cfa-type-grid div[data-testid="column"]:hover .cfa-body-anim { animation: cfaWobble .8s ease-in-out; transform-box: fill-box; transform-origin: 50% 100%; }
+.cfa-type-grid div[data-testid="column"]:hover .cfa-cap-anim { animation: cfaCapPop .8s ease-in-out; transform-box: fill-box; transform-origin: 50% 100%; }
+.cfa-type-grid div[data-testid="column"]:hover .cfa-bubble-anim { animation: cfaBubbleUp 1.2s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
+.cfa-type-grid div[data-testid="column"]:hover .cfa-shine-anim { animation: cfaShineSweep .95s ease-in-out infinite; }
+
+/* 로딩 애니메이션 */
+.cfa-loading-box { padding: 64px 20px; text-align:center; }
+.cfa-ring-wrap { position:relative; width:120px; height:120px; margin:0 auto 28px auto; }
+.cfa-ring { position:absolute; inset:0; border-radius:50%; border:2px solid rgba(37,99,235,0.4); animation: cfaPulse 2.1s ease-out infinite; }
+.cfa-ring.d2 { animation-delay: 1.05s; }
+@keyframes cfaPulse { 0%{transform:scale(0.8);opacity:0.8;} 80%{transform:scale(1.3);opacity:0;} 100%{opacity:0;} }
+.cfa-core { position:absolute; inset:22px; border-radius:50%; background: conic-gradient(from 0deg,#2563EB,#6366F1,#38bdf8,#2563EB); animation: cfaSpin 2.5s linear infinite; }
+@keyframes cfaSpin { to { transform:rotate(360deg); } }
+.cfa-core-inner { position:absolute; inset:10px; border-radius:50%; background: rgba(255,255,255,0.92); backdrop-filter: blur(10px); display:flex; align-items:center; justify-content:center; font-size:28px; }
+.cfa-loading-label { font-size:12px; letter-spacing:3px; text-transform:uppercase; color:#94a3b8; font-weight:600; margin-bottom:8px; }
+.cfa-loading-msg { font-size:16px; color:#0F172A; font-weight:500; }
+
+/* 대시보드 요약 요소를 위한 카드 */
+.cfa-summary { padding: 22px 24px; text-align:left; }
+.cfa-summary .label { font-size:11px; letter-spacing:1.6px; text-transform:uppercase; color:#94a3b8; font-weight:600; }
+.cfa-summary .value { font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:700; color:#0F172A; margin-top:6px; }
+.cfa-summary.accent { background: linear-gradient(160deg, rgba(219,234,254,0.7), rgba(224,231,255,0.5)); border-color: rgba(37,99,235,0.15); }
+.cfa-summary.accent .value { color:#2563EB; }
+
+/* 처방 테이블 */
+.cfa-table-wrap { padding: 4px; overflow-x: auto; }
+.cfa-table { width:100%; border-collapse:collapse; font-size:14px; min-width: 600px; }
+.cfa-table thead th { text-align:left; padding:14px 18px; font-size:11px; letter-spacing:1.2px; text-transform:uppercase; color:#64748b; font-weight:700; border-bottom:1px solid rgba(226,232,240,0.8); }
+.cfa-table thead th.num { text-align:right; }
+.cfa-table tbody td { padding:13px 18px; color:#334155; border-bottom:1px solid rgba(226,232,240,0.4); }
+.cfa-table tbody td.num { text-align:right; font-variant-numeric: tabular-nums; }
+.cfa-table tbody tr:hover td { background: rgba(37,99,235,0.03); }
+.cfa-table td.phase { color:#2563EB; font-weight:700; font-size:12.5px; white-space:nowrap; }
+.cfa-table td.name { color:#0F172A; font-weight:600; }
+.cfa-table td.fn { color:#64748b; font-size:12.5px; }
+.cfa-table td.dbtag { font-size:10px; color:#b45309; font-weight:600; margin-top:2px; }
+.cfa-table tfoot td { padding:16px 18px; font-weight:700; color:#0F172A; border-top:2px solid rgba(37,99,235,0.2); background: rgba(37,99,235,0.03); }
+
+/* 스트림릿 기본 컴포넌트 커스텀 오버라이드 */
+[data-testid="stExpander"] { background: rgba(255,255,255,0.65)!important; backdrop-filter: blur(20px) saturate(180%); border-radius: 20px!important; border: 1px solid rgba(226,232,240,0.8)!important; }
+.stButton>button, [data-testid="stDownloadButton"] button {
+    border-radius: 999px!important; background: rgba(255,255,255,0.85)!important;
+    backdrop-filter: blur(12px); border: 1px solid rgba(226,232,240,0.8)!important;
+    color:#0F172A!important; font-weight:600!important;
+    box-shadow: 0 4px 14px rgba(15,23,42,0.05), inset 0 1px 0 rgba(255,255,255,0.9); transition: all .25s ease-out;
+}
+.stButton>button:hover, [data-testid="stDownloadButton"] button:hover { background: rgba(37,99,235,0.1)!important; border-color: rgba(37,99,235,0.4)!important; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(37,99,235,0.15); }
+button[kind="primary"] { background: linear-gradient(135deg, rgba(37,99,235,0.95), rgba(79,70,229,0.95))!important; border: 1px solid rgba(255,255,255,0.3)!important; color:#fff!important; box-shadow: 0 6px 18px rgba(37,99,235,0.25)!important; }
+button[kind="primary"]:hover { filter: brightness(1.15); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(37,99,235,0.35)!important; }
+div[data-baseweb="input"], div[data-baseweb="base-input"] { background: rgba(255,255,255,0.7)!important; backdrop-filter: blur(10px); border-radius: 14px!important; border: 1px solid rgba(226,232,240,0.8)!important; }
+[data-testid="stFileUploaderDropzone"] { background: rgba(255,255,255,0.5)!important; backdrop-filter: blur(18px) saturate(180%); border-radius: 20px!important; border: 1px dashed rgba(148,163,184,0.4)!important; }
+
+/* 텍스트 렌더링 카드 */
+.report-card { background: rgba(255,255,255,0.55); border-radius: 16px; border: 1px solid rgba(226,232,240,0.6); padding: 20px; line-height: 1.6; }
+.report-card h4 { font-family:'Space Grotesk',sans-serif; color: #1e3a8a; margin-top: 0; }
+</style>
+""", unsafe_allow_html=True)
+
+# 백그라운드 버블
+st.markdown('<div class="cfa-blob cfa-blob1"></div><div class="cfa-blob cfa-blob2"></div><div class="cfa-blob cfa-blob3"></div>', unsafe_allow_html=True)
+
+# ------------------------------------------------------------------
+# 포토리얼리스틱 벡터 아이콘 정의
+# ------------------------------------------------------------------
+def svg_wrap(inner, c1, c2, cap1="#334155", cap2="#0F172A"):
+    return f'''<svg width="140" height="140" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="bg" cx="35%" cy="22%" r="80%">
+          <stop offset="0%" stop-color="{c1}" stop-opacity="0.14"/>
+          <stop offset="100%" stop-color="{c1}" stop-opacity="0.0"/>
+        </radialGradient>
+        <linearGradient id="g" x1="0.15" y1="0" x2="0.9" y2="1">
+          <stop offset="0%" stop-color="{c1}"/><stop offset="55%" stop-color="{c2}"/><stop offset="100%" stop-color="{c2}"/>
+        </linearGradient>
+        <linearGradient id="cap" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="{cap1}"/><stop offset="100%" stop-color="{cap2}"/>
+        </linearGradient>
+        <linearGradient id="shine" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="white" stop-opacity="0.8"/>
+          <stop offset="100%" stop-color="white" stop-opacity="0"/>
+        </linearGradient>
+        <radialGradient id="floorshadow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#0F172A" stop-opacity="0.18"/>
+          <stop offset="100%" stop-color="#0F172A" stop-opacity="0"/>
+        </radialGradient>
+        <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="1.4"/>
+        </filter>
+      </defs>
+      <circle cx="70" cy="66" r="64" fill="url(#bg)"/>
+      {inner}
+      <ellipse cx="70" cy="126" rx="34" ry="8" fill="url(#floorshadow)"/>
+    </svg>'''
+
+def icon_serum():
+    inner = '''
+    <path class="cfa-body-anim" d="M52 58 Q52 48 62 48 L78 48 Q88 48 88 58 L88 106 Q88 120 70 120 Q52 120 52 106 Z" fill="url(#g)"/>
+    <rect class="cfa-cap-anim" x="59" y="16" width="22" height="38" rx="10" fill="url(#cap)"/>
+    <ellipse class="cfa-cap-anim" cx="70" cy="16" rx="11" ry="5.5" fill="#64748b"/>
+    <path class="cfa-shine-anim" d="M56 60 Q54 68 56 106 Q58 116 70 118" stroke="url(#shine)" stroke-width="7" fill="none" stroke-linecap="round" filter="url(#soft)"/>
+    <circle class="cfa-bubble-anim" cx="70" cy="90" r="3" fill="rgba(255,255,255,0.6)" style="animation-delay:0s"/>
+    <circle class="cfa-bubble-anim" cx="64" cy="98" r="2" fill="rgba(255,255,255,0.5)" style="animation-delay:.2s"/>
+    <circle class="cfa-bubble-anim" cx="76" cy="82" r="2.4" fill="rgba(255,255,255,0.5)" style="animation-delay:.4s"/>
+    '''
+    return svg_wrap(inner, "#93c5fd", "#1e3a8a")
+
+def icon_lotion():
+    inner = '''
+    <rect class="cfa-body-anim" x="44" y="60" width="52" height="60" rx="22" fill="url(#g)"/>
+    <rect class="cfa-cap-anim" x="55" y="26" width="30" height="38" rx="10" fill="url(#cap)"/>
+    <rect class="cfa-cap-anim" x="63" y="10" width="34" height="14" rx="7" fill="#64748b"/>
+    <circle class="cfa-cap-anim" cx="90" cy="6" r="3.8" fill="#93c5fd"/>
+    <path class="cfa-shine-anim" d="M50 64 Q48 74 50 114" stroke="url(#shine)" stroke-width="8" fill="none" stroke-linecap="round" filter="url(#soft)"/>
+    <circle class="cfa-bubble-anim" cx="80" cy="98" r="3.8" fill="rgba(255,255,255,0.55)" style="animation-delay:0s"/>
+    <circle class="cfa-bubble-anim" cx="86" cy="86" r="2.4" fill="rgba(255,255,255,0.4)" style="animation-delay:.25s"/>
+    <circle class="cfa-bubble-anim" cx="72" cy="108" r="2" fill="rgba(255,255,255,0.4)" style="animation-delay:.5s"/>
+    '''
+    return svg_wrap(inner, "#7dd3fc", "#1e40af")
+
+def icon_cream():
+    inner = '''
+    <rect class="cfa-body-anim" x="30" y="54" width="80" height="64" rx="26" fill="url(#g)"/>
+    <rect class="cfa-cap-anim" x="24" y="36" width="92" height="24" rx="12" fill="url(#cap)"/>
+    <path class="cfa-shine-anim" d="M42 54 Q52 42 62 54 Q72 42 82 54 Q92 42 102 54" stroke="rgba(255,255,255,0.65)" stroke-width="3.8" fill="none" stroke-linecap="round"/>
+    <path class="cfa-shine-anim" d="M38 62 Q36 72 38 110" stroke="url(#shine)" stroke-width="9" fill="none" stroke-linecap="round" filter="url(#soft)"/>
+    <circle class="cfa-bubble-anim" cx="60" cy="88" r="3" fill="rgba(255,255,255,0.5)" style="animation-delay:.1s"/>
+    <circle class="cfa-bubble-anim" cx="90" cy="94" r="2.4" fill="rgba(255,255,255,0.45)" style="animation-delay:.35s"/>
+    '''
+    return svg_wrap(inner, "#a5b4fc", "#1d4ed8")
+
+def icon_toner():
+    inner = '''
+    <rect class="cfa-body-anim" x="55" y="62" width="30" height="56" rx="13" fill="url(#g)"/>
+    <rect class="cfa-cap-anim" x="61" y="30" width="18" height="34" rx="5" fill="url(#cap)"/>
+    <rect class="cfa-cap-anim" x="70" y="18" width="30" height="14" rx="7" fill="#64748b"/>
+    <rect class="cfa-cap-anim" x="87" y="8" width="9" height="16" rx="3.4" fill="#94a3b8"/>
+    <circle class="cfa-bubble-anim" cx="107" cy="8" r="2" fill="#93c5fd" opacity="0.9" style="animation-delay:0s"/>
+    <circle class="cfa-bubble-anim" cx="114" cy="16" r="1.5" fill="#93c5fd" opacity="0.7" style="animation-delay:.2s"/>
+    <circle class="cfa-bubble-anim" cx="103" cy="22" r="1.2" fill="#93c5fd" opacity="0.6" style="animation-delay:.4s"/>
+    <path class="cfa-shine-anim" d="M60 66 Q58 76 60 108" stroke="url(#shine)" stroke-width="5.5" fill="none" stroke-linecap="round" filter="url(#soft)"/>
+    '''
+    return svg_wrap(inner, "#38bdf8", "#0369a1")
+
+def icon_ampoule():
+    inner = '''
+    <path class="cfa-body-anim" d="M57 46 L83 46 L83 63 L91 112 Q91 118 70 118 Q49 118 49 112 L57 63 Z" fill="url(#g)"/>
+    <rect class="cfa-cap-anim" x="57" y="18" width="26" height="30" rx="5" fill="url(#cap)"/>
+    <circle class="cfa-cap-anim" cx="70" cy="30" r="3.8" fill="#c7d2fe"/>
+    <line x1="54" y1="80" x2="60" y2="80" stroke="rgba(255,255,255,0.65)" stroke-width="2"/>
+    <line x1="53" y1="93" x2="60" y2="93" stroke="rgba(255,255,255,0.65)" stroke-width="2"/>
+    <line x1="52" y1="106" x2="60" y2="106" stroke="rgba(255,255,255,0.65)" stroke-width="2"/>
+    <path class="cfa-shine-anim" d="M61 50 Q59 60 61 108" stroke="url(#shine)" stroke-width="6.5" fill="none" stroke-linecap="round" filter="url(#soft)"/>
+    <circle class="cfa-bubble-anim" cx="75" cy="72" r="2.6" fill="rgba(255,255,255,0.5)" style="animation-delay:.15s"/>
+    '''
+    return svg_wrap(inner, "#a5b4fc", "#312e81")
+
+def icon_cleanser():
+    inner = '''
+    <rect class="cfa-body-anim" x="44" y="62" width="52" height="56" rx="20" fill="url(#g)"/>
+    <rect class="cfa-cap-anim" x="55" y="30" width="30" height="34" rx="10" fill="url(#cap)"/>
+    <rect class="cfa-cap-anim" x="63" y="14" width="34" height="14" rx="7" fill="#64748b"/>
+    <circle class="cfa-bubble-anim" cx="56" cy="96" r="5.6" fill="rgba(255,255,255,0.6)" style="animation-delay:0s"/>
+    <circle class="cfa-bubble-anim" cx="72" cy="104" r="3.8" fill="rgba(255,255,255,0.5)" style="animation-delay:.25s"/>
+    <circle class="cfa-bubble-anim" cx="80" cy="92" r="2.9" fill="rgba(255,255,255,0.45)" style="animation-delay:.5s"/>
+    <path class="cfa-shine-anim" d="M50 66 Q48 76 50 112" stroke="url(#shine)" stroke-width="7.5" fill="none" stroke-linecap="round" filter="url(#soft)"/>
+    '''
+    return svg_wrap(inner, "#67e8f9", "#164e63")
+
+FORMULATION_TYPES = [
+    {"id": "serum", "label": "세럼", "svg": icon_serum()},
+    {"id": "lotion", "label": "로션", "svg": icon_lotion()},
+    {"id": "cream", "label": "크림", "svg": icon_cream()},
+    {"id": "toner", "label": "토너", "svg": icon_toner()},
+    {"id": "ampoule", "label": "앰플", "svg": icon_ampoule()},
+    {"id": "cleanser", "label": "클렌저", "svg": icon_cleanser()},
+]
+
+PHASE_PALETTE = ["#2563EB", "#6366F1", "#0EA5E9", "#818CF8", "#38BDF8", "#93C5FD"]
+
+# ------------------------------------------------------------------
+# 핵심 AI 유틸 함수
+# ------------------------------------------------------------------
+def get_client():
+    return genai.Client(api_key=st.session_state.api_key)
+
+def compress_image_bytes(image_bytes, max_size=1000):
+    img = Image.open(io.BytesIO(image_bytes))
+    if img.mode != "RGB":
+        img = img.convert("RGB")
+    img.thumbnail((max_size, max_size))
+    out = io.BytesIO()
+    img.save(out, format="JPEG", quality=82)
+    return out.getvalue()
+
+def vision_extract_ingredients_from_crop(crop_img):
+    buf = io.BytesIO()
+    crop_img.convert("RGB").save(buf, format="JPEG", quality=88)
+    image_bytes = compress_image_bytes(buf.getvalue())
+    client = get_client()
+    prompt = (
+        "이 이미지는 화장품 라벨에서 성분표 부분만 사람이 직접 잘라낸 것임. "
+        "여기 보이는 전성분(INCI 포함)을 빠짐없이 한국어 원료명으로 추출해서 쉼표로 구분된 목록으로만 출력해. "
+        "다른 설명은 넣지 마."
+    )
+    resp = client.models.generate_content(
+        model=st.session_state.model_name,
+        contents=[types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"), prompt],
+    )
+    return resp.text.strip()
+
+def merge_extracted_into_db(ingredient_text):
+    """라벨에서 추출된 성분 중 DB에 없는 원료를 자동으로 원료 단가 DB에 추가함"""
+    if not ingredient_text:
+        return 0
+    raw_names = re.split(r"[,\n·、]", ingredient_text)
+    existing_names = set(st.session_state.db["name"].tolist())
+    new_rows = []
+    for raw in raw_names:
+        name = re.sub(r"\(.*?\)", "", raw).strip()
+        name = name.strip("·-• ").strip()
+        if not name or len(name) < 2:
+            continue
+        if name not in existing_names:
+            new_rows.append({
+                "name": name, "inci": "", "unit_cost": 15,
+                "supplier": "라벨추출 - 근거 없음(추정단가)",
+            })
+            existing_names.add(name)
+    if new_rows:
+        st.session_state.db = pd.concat(
+            [st.session_state.db, pd.DataFrame(new_rows)], ignore_index=True
+        )
+    return len(new_rows)
+
+def generate_formulation(ftype, db_df, existing_ingredients=None):
+    client = get_client()
+    db_names = db_df["name"].tolist()
+
+    if existing_ingredients:
+        base_instruction = f"""아래는 사용자가 라벨에서 직접 영역을 지정해서 추출한 기존 제품의 전성분 목록임. 이 성분들을 배합의 기본 뼈대로 삼아서 최적화해야 함 (임의로 무시하고 새로 만들면 안 됨):
+검출된 성분: {existing_ingredients}
+
+작업 지시:
+1. 위 검출 성분 각각을 최대한 그대로 배합표에 포함시켜라.
+2. 검출 성분 중 보유 원료 DB에 있는 것과 이름이 다르면(예: 동의어, 표기 차이) 단가 매칭을 위해 DB 표기명으로 통일해서 사용해라.
+3. 검출 성분 중 DB에 없는 것은 새 원료로 그대로 추가해도 됨.
+4. 안정성/기능상 명백히 부족한 부분(방부제, 점증제 등)이 있으면 최소한만 보완해서 추가해라.
+5. 최종 배합비는 제형 특성에 맞게 새로 최적화해도 되지만, 성분 목록 자체는 검출된 것을 최대한 유지해라."""
+    else:
+        base_instruction = "기존 라벨 정보 없음. 아래 보유 원료 DB를 참고해서 신규 배합으로 설계해라."
+
+    prompt = f"""너는 화장품 처방 개발 전문가임. 아래 조건으로 화장품 배합(Formulation)을 설계해줘.
+
+제형 종류: {ftype['label']}
+
+{base_instruction}
+
+보유 원료 DB 목록(단가 매칭용, 참고):
+{', '.join(db_names)}
+
+출력은 반드시 아래 JSON 배열 형식만 출력하고 다른 설명, 마크다운 코드블록 표시는 절대 넣지 마.
+[
+  {{"phase": "A상 (수상)", "name": "원료명", "function": "기능(한글)", "ratio": 숫자}},
+  ...
+]
+- ratio는 상대적 비율 숫자(합계가 정확히 100일 필요는 없음, 이후 정규화함)
+- 최소 8개 이상 최대 16개 이하 원료로 구성
+- phase는 "A상 (수상)", "B상 (유상)", "C상 (첨가)" 중 제형 특성에 맞게 사용
+"""
+    resp = client.models.generate_content(model=st.session_state.model_name, contents=[prompt])
+    text = re.sub(r"^```json|^```|```$", "", resp.text.strip(), flags=re.MULTILINE).strip()
+    return json.loads(text)
+
+def refine_formulation(ftype, db_df, current_raw_formulation, feedback_text):
+    """기존 배합표와 사용자의 피드백을 기반으로 배합 비율을 재조정"""
+    client = get_client()
+    db_names = db_df["name"].tolist()
+    
+    prompt = f"""너는 화장품 처방 개발 전문가임. 기존에 설계된 배합표에 사용자의 피드백을 반영하여 성분 및 배합 비율을 커스텀 수정해줘.
+
+제형 종류: {ftype['label']}
+
+기존 배합표 데이터 (JSON):
+{json.dumps(current_raw_formulation, ensure_ascii=False, indent=2)}
+
+사용자 피드백 (요구사항):
+"{feedback_text}"
+
+보유 원료 DB 목록(참고):
+{', '.join(db_names)}
+
+작업 지시:
+1. 사용자 피드백 요구사항에 맞춰 원료 비율(ratio)을 증감하거나, 새로운 원료를 추가 혹은 불필요한 원료를 삭제하라.
+2. 추가되는 원료가 있다면 가급적 보유 원료 DB에서 찾아서 이름이 일치하도록 사용하라.
+3. 원료의 phase(A상, B상, C상)는 화학적 성질에 맞게 지정하라.
+4. 출력은 반드시 아래 JSON 배열 형식만 출력하고 다른 설명이나 마크다운 코드블록 표시는 절대 넣지 마.
+[
+  {{"phase": "A상 (수상)", "name": "원료명", "function": "기능(한글)", "ratio": 숫자}},
+  ...
+]
+"""
+    resp = client.models.generate_content(model=st.session_state.model_name, contents=[prompt])
+    text = re.sub(r"^```json|^```|```$", "", resp.text.strip(), flags=re.MULTILINE).strip()
+    return json.loads(text)
+
+def generate_manufacturing_guide(ftype, formulation_df):
+    """처방에 특화된 제조 공정 가이드라인 생성"""
+    client = get_client()
+    raw_list = formulation_df[["상", "원료명", "배합비(%)", "기능"]].to_dict(orient="records")
+    
+    prompt = f"""너는 화장품 전문 제조 공학 엔지니어임. 아래 배합 설계표를 바탕으로, 연구원이 실험실이나 제조소에서 실제로 제품을 만들 때 참고할 수 있는 상세 제조 공정(Manufacturing Process Guide)을 작성해줘.
+
+제형 종류: {ftype['label']}
+배합표 리스트:
+{json.dumps(raw_list, ensure_ascii=False, indent=2)}
+
+요구사항:
+1. A상 (수상), B상 (유상), C상 (첨가상) 등의 원료들이 어떻게 혼합되고 가열(호모믹서 조건, 온도, 시간)되는지 가이드를 자세히 단계별로 서술하라.
+2. 예: 교반 속도, 유화 온도(보통 70~75도), 냉각 시점, C상 투입 온도(보통 40~45도 이하) 등을 구체적으로 명시하라.
+3. 최종 품질 검사 기준 권장 사항(pH, 외관 성상)을 간략히 포함하라.
+4. 결과물은 읽기 편하게 마크다운(Markdown) 포맷으로만 출력하라. (친절하고 정중한 한국어로 작성)
+"""
+    resp = client.models.generate_content(model=st.session_state.model_name, contents=[prompt])
+    return resp.text
+
+def generate_product_spec(ftype, formulation_df):
+    """처방의 특징, 추천 피부타입, 핵심 성분 효능 분석 리포트 생성"""
+    client = get_client()
+    raw_list = formulation_df[["상", "원료명", "배합비(%)", "기능"]].to_dict(orient="records")
+    
+    prompt = f"""너는 화장품 처방 분석가 및 피부 과학 전문가임. 아래 배합표를 철저히 검토하여 이 화장품의 피부 과학적 기대 효과 및 마케팅 스펙을 정리해줘.
+
+제형 종류: {ftype['label']}
+배합표 리스트:
+{json.dumps(raw_list, ensure_ascii=False, indent=2)}
+
+요구사항:
+1. **타겟 피부 타입**: 이 배합이 어떤 피부 타입(건성, 지성, 민감성 등)에 가장 적합한지 분석하고 그 근거를 제시하라.
+2. **핵심 효능/기능**: 처방된 원료들의 시너지를 분석하여 가장 우수한 피부 효능(예: 피부 장벽 강화, 보습력 향상, 미백 등)을 설명하라.
+3. **사용감/텍스처 예측**: 배합비(유상 성분 비율, 실리콘계 성분 등)에 근거해 실제 발랐을 때의 텍스처(산뜻함, 끈적임, 영양감 등)를 정밀 분석하라.
+4. 결과물은 마크다운(Markdown) 포맷으로 보기 쉽게 작성하라.
+"""
+    resp = client.models.generate_content(model=st.session_state.model_name, contents=[prompt])
+    return resp.text
+
+def normalize_and_cost(raw_items, db_df):
+    total = sum(float(i["ratio"]) for i in raw_items)
+    db_map = {row["name"]: row["unit_cost"] for _, row in db_df.iterrows()}
+    rows = []
+    for i in raw_items:
+        pct = round(float(i["ratio"]) / total * 100, 2)
+        weight = round(pct / 100 * 1000, 2)
+        matched = db_map.get(i["name"])
+        estimated = matched is None
+        unit_cost = matched if matched is not None else 15
+        total_cost = round(weight * unit_cost)
+        rows.append({
+            "상": i["phase"], "원료명": i["name"], "기능": i["function"],
+            "배합비(%)": pct, "중량(g)": weight,
+            "단가(원/g)": unit_cost, "총원가(원)": total_cost,
+            "DB매칭": "DB 미등록(추정단가)" if estimated else "",
+        })
+    diff = round(100 - sum(r["배합비(%)"] for r in rows), 2)
+    if abs(diff) >= 0.01:
+        max_idx = max(range(len(rows)), key=lambda k: rows[k]["배합비(%)"])
+        rows[max_idx]["배합비(%)"] = round(rows[max_idx]["배합비(%)"] + diff, 2)
+        rows[max_idx]["중량(g)"] = round(rows[max_idx]["배합비(%)"] / 100 * 1000, 2)
+        rows[max_idx]["총원가(원)"] = round(rows[max_idx]["중량(g)"] * rows[max_idx]["단가(원/g)"])
+    return pd.DataFrame(rows)
+
+# ------------------------------------------------------------------
+# HTML 기반 시각화 렌더링
+# ------------------------------------------------------------------
+def render_table_html(df):
+    rows_html = ""
+    prev_phase = None
+    for _, r in df.iterrows():
+        phase_cell = r["상"] if r["상"] != prev_phase else ""
+        prev_phase = r["상"]
+        db_tag = f'<div class="dbtag">⚠️ {r["DB매칭"]}</div>' if r["DB매칭"] else ""
+        rows_html += f'''<tr>
+            <td class="phase">{phase_cell}</td>
+            <td class="name">{r["원료명"]}{db_tag}</td>
+            <td class="fn">{r["기능"]}</td>
+            <td class="num">{r["배합비(%)"]:.2f}%</td>
+            <td class="num">{r["중량(g)"]:.2f}g</td>
+            <td class="num">{r["단가(원/g)"]:,.0f}</td>
+            <td class="num">{r["총원가(원)"]:,.0f}</td>
+        </tr>'''
+    total_cost = df["총원가(원)"].sum()
+    return f'''
+    <div class="cfa-table-wrap">
+    <table class="cfa-table">
+      <thead><tr>
+        <th>상</th><th>원료명</th><th>기능</th>
+        <th class="num">배합비(%)</th><th class="num">중량(g)</th><th class="num">단가(원/g)</th><th class="num">총원가(원)</th>
+      </tr></thead>
+      <tbody>{rows_html}</tbody>
+      <tfoot><tr>
+        <td colspan="3">합계</td>
+        <td class="num">100.00%</td><td class="num">1,000.00g</td><td></td>
+        <td class="num">{total_cost:,.0f}원</td>
+      </tr></tfoot>
+    </table>
+    </div>'''
+
+def polar(cx, cy, r, angle_deg):
+    a = math.radians(angle_deg)
+    return cx + r*math.sin(a), cy - r*math.cos(a)
+
+def render_donut_html(df):
+    cx, cy, r_outer, r_inner = 220, 220, 190, 105
+    phases = df["상"].unique().tolist()
+    phase_color = {p: PHASE_PALETTE[i % len(PHASE_PALETTE)] for i, p in enumerate(phases)}
+
+    segs = ""
+    labels = ""
+    start_angle = 0
+    for _, r in df.iterrows():
+        sweep = r["배합비(%)"] / 100 * 360
+        end_angle = start_angle + sweep
+        large = 1 if sweep > 180 else 0
+        x1, y1 = polar(cx, cy, r_outer, start_angle)
+        x2, y2 = polar(cx, cy, r_outer, end_angle)
+        xi1, yi1 = polar(cx, cy, r_inner, end_angle)
+        xi2, yi2 = polar(cx, cy, r_inner, start_angle)
+        color = phase_color[r["상"]]
+        tip = f"{r['원료명']} | 배합비 {r['배합비(%)']:.2f}% | 중량 {r['중량(g)']:.2f}g | 단가 {r['단가(원/g)']:,.0f}원/g | 총원가 {r['총원가(원)']:,.0f}원"
+        d = f"M{x1:.2f},{y1:.2f} A{r_outer},{r_outer} 0 {large} 1 {x2:.2f},{y2:.2f} L{xi1:.2f},{yi1:.2f} A{r_inner},{r_inner} 0 {large} 0 {xi2:.2f},{yi2:.2f} Z"
+        segs += f'<path d="{d}" fill="{color}" opacity="0.88" stroke="white" stroke-width="1.5" class="cfa-seg" onmousemove="showTip(event, \'{tip}\')" onmouseleave="hideTip()"></path>'
+        if sweep > 12:
+            mid = (start_angle + end_angle) / 2
+            lx, ly = polar(cx, cy, (r_outer+r_inner)/2, mid)
+            labels += f'<text x="{lx:.1f}" y="{ly:.1f}" text-anchor="middle" dominant-baseline="middle" font-size="10" fill="white" pointer-events="none" font-family="Inter,sans-serif">{r["원료명"]}</text>'
+        start_angle = end_angle
+
+    total_cost = df["총원가(원)"].sum()
+    legend_items = "".join(
+        f'<div style="display:flex;align-items:center;gap:6px;margin-right:16px;margin-bottom:6px;">'
+        f'<span style="width:10px;height:10px;border-radius:3px;background:{phase_color[p]};display:inline-block;"></span>'
+        f'<span style="font-size:11.5px;color:#475569;font-weight:600;">{p}</span></div>'
+        for p in phases
+    )
+
+    return f'''
+    <div id="donut-viewport" style="width:100%; height:420px; overflow:hidden; position:relative; touch-action:none; cursor:grab; border-radius:16px; background:rgba(255,255,255,0.3);">
+      <div id="donut-zoomable" style="position:absolute; left:0; top:0; width:100%; height:100%;
+           display:flex; align-items:center; justify-content:center; gap:24px; flex-wrap:wrap;
+           transform-origin:0 0; will-change:transform; font-family:Inter,sans-serif;">
+        <svg viewBox="0 0 440 440" width="360" height="360">
+          {segs}
+          {labels}
+          <text x="220" y="210" text-anchor="middle" font-size="11" fill="#94a3b8" font-family="Inter,sans-serif" font-weight="600">TOTAL COST</text>
+          <text x="220" y="238" text-anchor="middle" font-size="20" font-weight="700" fill="#0F172A" font-family="Space Grotesk,sans-serif">{total_cost:,.0f}원</text>
+        </svg>
+        <div style="display:flex; flex-wrap:wrap; max-width:200px;">{legend_items}</div>
+      </div>
+      <div id="donut-tooltip" style="position:absolute; display:none; pointer-events:none;
+        background:rgba(15,23,42,0.95); color:#fff; padding:10px 14px; border-radius:12px;
+        font-size:12px; white-space:nowrap; z-index:10; box-shadow:0 10px 25px rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.15);"></div>
+    </div>
+    <div style="text-align:center; font-size:11px; color:#94a3b8; margin-top:8px; font-weight:500;">
+      🔍 마우스 휠 = 마우스 위치 기준 확대/축소 · 드래그 = 위치 이동 · 더블클릭 = 뷰 리셋
+    </div>
+    <style>
+      .cfa-seg {{ transition: opacity .18s, filter .18s; cursor:pointer; }}
+      .cfa-seg:hover {{ opacity:1 !important; filter: drop-shadow(0 0 10px rgba(37,99,235,0.6)); }}
+    </style>
+    <script>
+      function showTip(evt, text) {{
+        const viewport = document.getElementById('donut-viewport');
+        const tip = document.getElementById('donut-tooltip');
+        const rect = viewport.getBoundingClientRect();
+        tip.innerText = text;
+        tip.style.left = (evt.clientX - rect.left + 15) + 'px';
+        tip.style.top = (evt.clientY - rect.top + 10) + 'px';
+        tip.style.display = 'block';
+      }}
+      function hideTip() {{ document.getElementById('donut-tooltip').style.display = 'none'; }}
+
+      (function() {{
+        let scale = 1, tx = 0, ty = 0;
+        let dragging = false, lastX = 0, lastY = 0;
+        const viewport = document.getElementById('donut-viewport');
+        const el = document.getElementById('donut-zoomable');
+
+        function apply() {{ el.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')'; }}
+
+        viewport.addEventListener('wheel', function(e) {{
+          e.preventDefault();
+          const rect = viewport.getBoundingClientRect();
+          const mx = e.clientX - rect.left;
+          const my = e.clientY - rect.top;
+          const factor = e.deltaY < 0 ? 1.15 : (1/1.15);
+          const newScale = Math.min(Math.max(scale * factor, 1), 5);
+          tx = mx - (mx - tx) * (newScale / scale);
+          ty = my - (my - ty) * (newScale / scale);
+          scale = newScale;
+          apply();
+        }}, {{ passive: false }});
+
+        viewport.addEventListener('mousedown', function(e) {{
+          if (e.target.id === 'donut-viewport' || e.target.tagName === 'svg' || e.target.tagName === 'path') {{
+            dragging = true; lastX = e.clientX; lastY = e.clientY;
+            viewport.style.cursor = 'grabbing';
+          }}
+        }});
+        window.addEventListener('mousemove', function(e) {{
+          if (!dragging) return;
+          tx += (e.clientX - lastX); ty += (e.clientY - lastY);
+          lastX = e.clientX; lastY = e.clientY;
+          apply();
+        }});
+        window.addEventListener('mouseup', function() {{
+          dragging = false; viewport.style.cursor = 'grab';
+        }});
+        viewport.addEventListener('dblclick', function() {{
+          scale = 1; tx = 0; ty = 0; apply();
+        }});
+      }})();
+    </script>
+    '''
+
+# ------------------------------------------------------------------
+# 모달 다이알로그
+# ------------------------------------------------------------------
+@st.dialog("이미지 확대보기", width="large")
+def zoom_dialog(img, caption):
+    st.image(img, use_container_width=True, caption=caption)
+
+# ------------------------------------------------------------------
+# 헤더 및 레이아웃
+# ------------------------------------------------------------------
+hcol1, hcol2 = st.columns([5, 1.2])
+with hcol1:
+    st.markdown('''
+    <div class="cfa-header-row">
+      <div class="cfa-brand">
+        <div class="badge">🧪</div>
+        <div>
+          <h1>Cosmetics Formulation AI</h1>
+          <p>AI-Driven Formulation & Cost Engineering</p>
+        </div>
+      </div>
+    </div>
+    ''', unsafe_allow_html=True)
+with hcol2:
+    if st.session_state.step >= 1:
+        if st.button("🏠 처음으로 (처방 초기화)", use_container_width=True):
+            st.session_state.step = 1
+            st.session_state.ftype = None
+            st.session_state.label_ingredients = None
+            st.session_state.label_original = None
+            st.session_state.label_crop = None
+            st.session_state.raw_formulation = None
+            st.session_state.formulation = None
+            st.session_state.manufacturing_guide = ""
+            st.session_state.product_spec = ""
+            st.rerun()
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# ------------------------------------------------------------------
+# 상단 진행 단계 인디케이터 (Stepper)
+# ------------------------------------------------------------------
+if st.session_state.step > 0:
+    s1_class = "active" if st.session_state.step == 1 else "done"
+    s2_class = "active" if st.session_state.step == 2 else ("done" if st.session_state.step > 2 else "")
+    s3_class = "active" if st.session_state.step == 3 else ""
+    
+    st.markdown(f'''
+    <div class="cfa-stepper">
+      <div class="cfa-step {s1_class}">1. 제형 종류 선택</div>
+      <div class="cfa-step-arrow">→</div>
+      <div class="cfa-step {s2_class}">2. 라벨 영역 지정 & 설계</div>
+      <div class="cfa-step-arrow">→</div>
+      <div class="cfa-step {s3_class}">3. 최적 처방 리포트</div>
+    </div>
+    ''', unsafe_allow_html=True)
+
+# ------------------------------------------------------------------
+# DB 관리 섹션 (CSV Import/Export 추가로 기능 고도화)
+# ------------------------------------------------------------------
+if st.session_state.step >= 1:
+    with st.expander("⚙️ 원료 단가 데이터베이스 관리 (Raw Material DB)"):
+        st.caption("라벨에서 추출된 원료 중 신규 원료는 단가 15원/g의 임시 원료로 자동 추가됩니다.")
+        
+        # CSV 내보내기 및 가져오기 UI
+        db_cols = st.columns([1, 1, 2])
+        with db_cols[0]:
+            csv_buf = io.StringIO()
+            st.session_state.db.to_csv(csv_buf, index=False)
+            st.download_button(
+                "📥 DB를 CSV로 내보내기",
+                data=csv_buf.getvalue(),
+                file_name="cosmetics_raw_db.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+        with db_cols[1]:
+            uploaded_db = st.file_uploader("📤 CSV 가져오기 (컬럼: name, inci, unit_cost, supplier)", type=["csv"], label_visibility="collapsed")
+            if uploaded_db is not None:
+                try:
+                    imported_df = pd.read_csv(uploaded_db)
+                    required_cols = {"name", "inci", "unit_cost", "supplier"}
+                    if required_cols.issubset(imported_df.columns):
+                        st.session_state.db = imported_df
+                        st.success("데이터베이스를 성공적으로 업데이트했습니다!")
+                        st.rerun()
+                    else:
+                        st.error("CSV 형식이 일치하지 않습니다. name, inci, unit_cost, supplier 컬럼이 필요합니다.")
+                except Exception as e:
+                    st.error(f"CSV 파싱 중 에러 발생: {e}")
+                    
+        edited = st.data_editor(
+            st.session_state.db, num_rows="dynamic", use_container_width=True, key="db_editor",
+            column_config={
+                "name": "원료명", "inci": "INCI명",
+                "unit_cost": st.column_config.NumberColumn("단가(원/g)", min_value=0),
+                "supplier": "공급사",
+            },
+        )
+        st.session_state.db = edited
+    st.markdown("<br>", unsafe_allow_html=True)
+
+# ------------------------------------------------------------------
+# STEP 0: API Key 설정
+# ------------------------------------------------------------------
+if st.session_state.step == 0:
+    col = st.columns([1, 2, 1])[1]
+    with col:
+        st.markdown('<div class="liquid-glass">', unsafe_allow_html=True)
+        st.markdown("### 🔑 Gemini API 키 설정")
+        st.caption("이 웹앱은 배합 설계 및 이미지 분석에 Google Gemini API를 사용합니다.")
+        st.markdown("[👉 Google AI Studio에서 무료 API 키 발급받기](https://aistudio.google.com/apikey)")
+        key_input = st.text_input("Gemini API Key", type="password", placeholder="AIzaSy... 로 시작하는 키를 입력해 주세요")
+        model_input = st.text_input("사용할 Gemini 모델명", value=st.session_state.model_name)
+        
+        st.caption("※ 로컬 환경 변수 `GEMINI_API_KEY`를 설정하거나 Streamlit Secrets를 구성하면 이 화면을 건너뛸 수 있습니다.")
+        if st.button("시작하기 →", use_container_width=True, type="primary"):
+            if key_input.strip():
+                st.session_state.api_key = key_input.strip()
+                st.session_state.model_name = model_input.strip() or "gemini-2.5-flash"
+                st.session_state.step = 1
+                st.rerun()
+            else:
+                st.error("올바른 API 키를 입력해 주세요")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+# ------------------------------------------------------------------
+# STEP 1: 제형 선택
+# ------------------------------------------------------------------
+elif st.session_state.step == 1:
+    st.caption("STEP 1")
+    st.subheader("설계하고자 하는 화장품 제형을 선택해 주세요")
+    
+    st.markdown('<div class="cfa-type-grid">', unsafe_allow_html=True)
+    cols = st.columns(3)
+    for i, t in enumerate(FORMULATION_TYPES):
+        with cols[i % 3]:
+            st.markdown(f'''
+            <div class="cfa-tile">
+              <div class="cfa-icon-wrap">{t["svg"]}</div>
+              <div class="cfa-name-pill">{t["label"]}<span class="cfa-liquid-drop2"></span></div>
+            </div>
+            ''', unsafe_allow_html=True)
+            if st.button(t["label"], key=f"btn_{t['id']}", use_container_width=True):
+                st.session_state.ftype = t
+                st.session_state.step = 2
+                st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# ------------------------------------------------------------------
+# STEP 2: 라벨 크롭 및 AI 처방 설계
+# ------------------------------------------------------------------
+elif st.session_state.step == 2:
+    ftype = st.session_state.ftype
+    st.caption("STEP 2")
+    st.subheader(f"✨ {ftype['label']} 설계 조건 설정")
+    
+    col_l, col_r = st.columns([1.2, 1])
+    
+    with col_l:
+        st.markdown('<div class="liquid-glass">', unsafe_allow_html=True)
+        st.markdown("#### 1. 기존 제품 라벨 이미지 업로드 (선택)")
+        st.write("이미지의 성분표 부분만 드래그하여 정확하게 지정하면, AI가 성분을 완벽히 파악해 맞춤 배합에 반영합니다.")
+        uploaded = st.file_uploader("라벨 이미지 업로드 (10MB 이하)", type=["png", "jpg", "jpeg"])
+        cropped_img = None
+
+        if uploaded is not None:
+            if uploaded.size > 10 * 1024 * 1024:
+                st.error("파일이 너무 큽니다. 10MB 이하의 이미지를 업로드해 주세요.")
+            else:
+                orig_img = Image.open(uploaded).convert("RGB")
+                st.caption("아래 박스의 모서리를 끌어 성분표 텍스트 영역만 알맞게 지정해 주세요.")
+                cropped_img = st_cropper(
+                    orig_img, realtime_update=True, box_color="#2563EB",
+                    aspect_ratio=None, return_type="image"
+                )
+                st.session_state.label_original = orig_img
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+    with col_r:
+        st.markdown('<div class="liquid-glass" style="height: 100%;">', unsafe_allow_html=True)
+        st.markdown("#### 2. 배합 설계 시작")
+        if cropped_img is not None:
+            st.write("선택된 성분표 크롭 영역:")
+            st.image(cropped_img, width=240)
+            st.session_state.label_crop = cropped_img
+        else:
+            st.write("업로드된 라벨이 없습니다. 원료 DB에 있는 성분들을 활용하여 **인공지능의 신규 배합 설계**를 바로 시작합니다.")
+            
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        
+        if st.button("⚡ AI 배합 처방 설계 실행", type="primary", use_container_width=True):
+            placeholder = st.empty()
+            placeholder.markdown('''
+            <div class="liquid-glass cfa-loading-box">
+              <div class="cfa-ring-wrap">
+                <div class="cfa-ring"></div><div class="cfa-ring d2"></div>
+                <div class="cfa-core"></div><div class="cfa-core-inner">🧪</div>
+              </div>
+              <div class="cfa-loading-label">Gemini AI · Processing</div>
+              <div class="cfa-loading-msg">화학적 상용성 최적화 및 원가 설계 분석 중...</div>
+            </div>
+            ''', unsafe_allow_html=True)
+            try:
+                existing = None
+                if cropped_img is not None:
+                    # 성분 텍스트 추출
+                    existing = vision_extract_ingredients_from_crop(cropped_img)
+                    st.session_state.label_ingredients = existing
+                    # DB에 누락된 원료 병합
+                    merge_extracted_into_db(existing)
+
+                # 배합 생성
+                raw = generate_formulation(ftype, st.session_state.db, existing)
+                st.session_state.raw_formulation = raw
+                
+                df = normalize_and_cost(raw, st.session_state.db)
+                st.session_state.formulation = df
+                
+                # 제조 공정 및 스펙 리포트 사전 생성
+                st.session_state.manufacturing_guide = generate_manufacturing_guide(ftype, df)
+                st.session_state.product_spec = generate_product_spec(ftype, df)
+                
+                st.session_state.step = 3
+                placeholder.empty()
+                st.rerun()
+            except Exception as e:
+                placeholder.empty()
+                st.error(f"처방 설계에 실패했습니다: {e}")
+                st.caption("Gemini API 키 상태와 쿼리 한도를 다시 한번 점검해 주세요.")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+# ------------------------------------------------------------------
+# STEP 3: 설계 결과 대시보드
+# ------------------------------------------------------------------
+elif st.session_state.step == 3:
+    ftype = st.session_state.ftype
+    df = st.session_state.formulation
+
+    # 상단 요약 카드 및 엑셀 다운로드
+    top = st.columns([3, 1])
+    with top[0]:
+        st.caption("STEP 3")
+        st.subheader(f"📊 {ftype['label']} 최적 배합 설계 리포트")
+    with top[1]:
+        # 엑셀 시트 정밀 가공
+        export_df = df.drop(columns=["DB매칭"]).copy()
+        total_cost = export_df["총원가(원)"].sum()
+        n_data = len(export_df)
+        total_row = pd.DataFrame([{
+            "상": "", "원료명": "합계", "기능": "",
+            "배합비(%)": export_df["배합비(%)"].sum(),
+            "중량(g)": export_df["중량(g)"].sum(),
+            "단가(원/g)": "", "총원가(원)" : total_cost
+        }])
+        per100_row = pd.DataFrame([{
+            "상": "", "원료명": "100g당 환산원가", "기능": "",
+            "배합비(%)": "", "중량(g)": "", "단가(원/g)": "",
+            "총원가(원)" : round(total_cost / 10)
+        }])
+        export_df = pd.concat([export_df, total_row, per100_row], ignore_index=True)
+
+        buf = BytesIO()
+        with pd.ExcelWriter(buf, engine="xlsxwriter") as writer:
+            sheet_name = "배합처방전"
+            export_df.to_excel(writer, index=False, sheet_name=sheet_name)
+            workbook = writer.book
+            worksheet = writer.sheets[sheet_name]
+            worksheet.set_column("A:G", 18)
+            bold_format = workbook.add_format({"bold": True})
+            worksheet.set_row(n_data + 1, None, bold_format)
+            worksheet.set_row(n_data + 2, None, bold_format)
+
+            phases_order = df["상"].tolist()
+            unique_phases = df["상"].unique().tolist()
+            phase_color = {p: PHASE_PALETTE[i % len(PHASE_PALETTE)] for i, p in enumerate(unique_phases)}
+            points = [{"fill": {"color": phase_color[p]}} for p in phases_order]
+
+            chart = workbook.add_chart({"type": "doughnut"})
+            chart.add_series({
+                "name": "배합비 구성",
+                "categories": [sheet_name, 1, 1, n_data, 1],
+                "values":     [sheet_name, 1, 3, n_data, 3],
+                "points": points,
+                "data_labels": {"percentage": True, "category": False, "position": "outside_end",
+                                 "font": {"size": 8}},
+            })
+            chart.set_title({"name": f"{ftype['label']} 배합 구성비 (%)"})
+            chart.set_size({"width": 550, "height": 480})
+            worksheet.insert_chart("I2", chart)
+
+        st.download_button(
+            "📥 네이티브 차트 포함 Excel 다운로드", data=buf.getvalue(),
+            file_name=f"{ftype['label']}_배합처방리포트.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
+
+    # 100g당 단가 계산
+    cost_100g = total_cost / 10
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.markdown(f'<div class="liquid-glass cfa-summary"><div class="label">기본 조제 기준 중량</div><div class="value">1,000 g</div></div>', unsafe_allow_html=True)
+    with c2:
+        st.markdown(f'<div class="liquid-glass cfa-summary"><div class="label">1,000g 기준 배합 총원가</div><div class="value">{total_cost:,.0f}원</div></div>', unsafe_allow_html=True)
+    with c3:
+        st.markdown(f'<div class="liquid-glass cfa-summary accent"><div class="label">100g당 제품 단가</div><div class="value">{cost_100g:,.0f}원</div></div>', unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # 결과물 고도화: 다양한 정보 확인용 탭 구성
+    tabs = st.tabs(["📊 배합 처방전 (Formulation)", "🔵 성분 다이어그램", "🛠️ 제조 공정 가이드 (Manufacturing)", "📝 제형 및 피부 효능 설명서"])
+    
+    with tabs[0]:
+        st.markdown('<div class="liquid-glass">', unsafe_allow_html=True)
+        st.markdown(render_table_html(df), unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+    with tabs[1]:
+        st.markdown('<div class="liquid-glass">', unsafe_allow_html=True)
+        components.html(render_donut_html(df), height=470, scrolling=False)
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+    with tabs[2]:
+        st.markdown('<div class="liquid-glass">', unsafe_allow_html=True)
+        st.markdown('<div class="report-card">', unsafe_allow_html=True)
+        if st.session_state.manufacturing_guide:
+            st.markdown(st.session_state.manufacturing_guide)
+        else:
+            st.write("제조 가이드를 불러오는 데 실패했습니다.")
+        st.markdown('</div></div>', unsafe_allow_html=True)
+        
+    with tabs[3]:
+        st.markdown('<div class="liquid-glass">', unsafe_allow_html=True)
+        st.markdown('<div class="report-card">', unsafe_allow_html=True)
+        if st.session_state.product_spec:
+            st.markdown(st.session_state.product_spec)
+        else:
+            st.write("처방 설명서를 불러오는 데 실패했습니다.")
+        st.markdown('</div></div>', unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # ------------------------------------------------------------------
+    # 대화식 배합 피드백 및 조정 기능 (고도화 핵심 요구사항)
+    # ------------------------------------------------------------------
+    st.markdown('<div class="liquid-glass">', unsafe_allow_html=True)
+    st.markdown("### ⚙️ 배합 커스텀 수정 피드백 루프")
+    st.write("처방된 배합이 마음에 들지 않거나, 특정 요구사항이 있으면 피드백을 전달해 주세요. AI가 배합 비율과 원료를 정교하게 다시 조정합니다.")
+    
+    feedback_text = st.text_input(
+        "피드백 입력",
+        placeholder="예: '단가를 20% 낮추고 병풀 추출물을 2% 추가해줘', '사용감을 촉촉하게 개선하기 위해 보습제를 더 넣어줘'"
+    )
+    
+    if st.button("🔧 피드백 반영하여 처방 재설계", type="primary"):
+        if not feedback_text.strip():
+            st.warning("피드백 내용을 입력해 주세요.")
+        else:
+            placeholder = st.empty()
+            placeholder.markdown('''
+            <div class="liquid-glass cfa-loading-box">
+              <div class="cfa-ring-wrap">
+                <div class="cfa-ring"></div><div class="cfa-ring d2"></div>
+                <div class="cfa-core"></div><div class="cfa-core-inner">🛠️</div>
+              </div>
+              <div class="cfa-loading-label">Gemini AI · Adjusting</div>
+              <div class="cfa-loading-msg">피드백을 반영하여 처방 수정 및 공정 재구성 중...</div>
+            </div>
+            ''', unsafe_allow_html=True)
+            
+            try:
+                # 피드백 수정 실행
+                raw = refine_formulation(ftype, st.session_state.db, st.session_state.raw_formulation, feedback_text)
+                st.session_state.raw_formulation = raw
+                
+                df = normalize_and_cost(raw, st.session_state.db)
+                st.session_state.formulation = df
+                
+                # 제조 공정 및 분석 리포트 업데이트
+                st.session_state.manufacturing_guide = generate_manufacturing_guide(ftype, df)
+                st.session_state.product_spec = generate_product_spec(ftype, df)
+                
+                placeholder.empty()
+                st.success("피드백이 성공적으로 반영되었습니다!")
+                st.rerun()
+            except Exception as e:
+                placeholder.empty()
+                st.error(f"피드백 반영 수정에 실패했습니다: {e}")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # ------------------------------------------------------------------
+    # 라벨 크롭 분석 데이터 원본 복원 및 표시
+    # ------------------------------------------------------------------
+    if st.session_state.label_ingredients:
+        st.markdown("<br>", unsafe_allow_html=True)
+        with st.expander("🔍 라벨 분석 정보 및 원본 대조"):
+            col_crop_l, col_crop_r = st.columns([1, 2])
+            with col_crop_l:
+                if st.session_state.label_crop:
+                    st.write("지정했던 전성분 크롭 이미지:")
+                    st.image(st.session_state.label_crop, use_container_width=True)
+                    if st.button("🔍 전체 원본 이미지 보기"):
+                        zoom_dialog(st.session_state.label_original, "업로드 원본 라벨 이미지")
+            with col_crop_r:
+                st.write("라벨에서 추출된 원본 성분 텍스트:")
+                st.info(st.session_state.label_ingredients)
+                st.caption("이 성분들 중 원료 데이터베이스에 없었던 원료는 자동으로 DB에 등록되었으며 단가 15원/g으로 가설정되었습니다.")
