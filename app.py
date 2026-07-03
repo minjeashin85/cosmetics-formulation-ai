@@ -550,8 +550,20 @@ def normalize_and_cost(raw_items, db_df):
         estimated = matched is None
         unit_cost = matched if matched is not None else 15
         total_cost = round(weight * unit_cost)
+        
+        # Phase normalization
+        p_raw = i["phase"]
+        if "수상" in p_raw or "A" in p_raw or "a" in p_raw:
+            phase_clean = "수상"
+        elif "유상" in p_raw or "B" in p_raw or "b" in p_raw:
+            phase_clean = "유상"
+        elif "첨가" in p_raw or "C" in p_raw or "c" in p_raw:
+            phase_clean = "첨가"
+        else:
+            phase_clean = p_raw
+
         rows.append({
-            "상": i["phase"], "원료명": i["name"], "기능": i["function"],
+            "상": phase_clean, "원료명": i["name"], "기능": i["function"],
             "배합비(%)": pct, "중량(g)": weight,
             "단가(원/g)": unit_cost, "총원가(원)": total_cost,
             "DB매칭": "DB 미등록(추정단가)" if estimated else "",
@@ -657,11 +669,11 @@ def render_donut_html(df):
     )
 
     return f'''
-    <div id="donut-viewport" style="width:100%; height:420px; overflow:hidden; position:relative; touch-action:none; cursor:grab; border-radius:16px; background:rgba(255,255,255,0.3);">
+    <div id="donut-viewport" style="width:100%; height:520px; overflow:hidden; position:relative; touch-action:none; cursor:grab; border-radius:16px; background:rgba(255,255,255,0.3);">
       <div id="donut-zoomable" style="position:absolute; left:0; top:0; width:100%; height:100%;
            display:flex; align-items:center; justify-content:center; gap:24px; flex-wrap:wrap;
            transform-origin:0 0; will-change:transform; font-family:Inter,sans-serif;">
-        <svg viewBox="0 0 440 440" width="300" height="300">
+        <svg viewBox="0 0 440 440" width="410" height="410">
           {segs}
           {labels}
           <text x="220" y="210" text-anchor="middle" font-size="11" fill="#94a3b8" font-family="Inter,sans-serif" font-weight="600">TOTAL COST</text>
@@ -760,23 +772,19 @@ with hcol1:
     ''', unsafe_allow_html=True)
 with hcol2:
     if st.session_state.step >= 1:
-        if st.button("🏠 처음으로 (처방 초기화)", use_container_width=True):
-            # 1. Back up critical states
-            api_key = st.session_state.get("api_key", "")
-            model_name = st.session_state.get("model_name", "gemini-2.5-flash")
-            db = st.session_state.get("db")
-            
-            # 2. Clear all session states
-            st.session_state.clear()
-            
-            # 3. Restore critical states
-            st.session_state.api_key = api_key
-            st.session_state.model_name = model_name
-            if db is not None:
-                st.session_state.db = db
-                
-            # 4. Set step to 1 and rerun
+        if st.button("🏠 처음으로 (처방 초기화)", use_container_width=True, key="header_reset_button"):
             st.session_state.step = 1
+            st.session_state.ftype = None
+            st.session_state.label_ingredients = None
+            st.session_state.label_original = None
+            st.session_state.label_crop = None
+            st.session_state.raw_formulation = None
+            st.session_state.formulation = None
+            
+            # Deleting widget state keys
+            for k in ["ingredients_text_editor", "db_editor", "label_file_uploader"]:
+                if k in st.session_state:
+                    del st.session_state[k]
             st.rerun()
 
 st.markdown("<br>", unsafe_allow_html=True)
@@ -941,7 +949,7 @@ elif st.session_state.step == 2:
         st.markdown('<div class="liquid-glass">', unsafe_allow_html=True)
         st.markdown("#### 1. 기존 제품 라벨 이미지 업로드 (선택)")
         st.write("이미지의 성분표 부분만 드래그하여 정확하게 지정하면, AI가 성분을 완벽히 파악해 맞춤 배합에 반영합니다.")
-        uploaded = st.file_uploader("라벨 이미지 업로드 (10MB 이하)", type=["png", "jpg", "jpeg"])
+        uploaded = st.file_uploader("라벨 이미지 업로드 (10MB 이하)", type=["png", "jpg", "jpeg"], key="label_file_uploader")
         cropped_img = None
 
         if uploaded is not None:
@@ -1105,7 +1113,7 @@ elif st.session_state.step == 3:
             phases_order = df["상"].tolist()
             points = [{"fill": {"color": get_phase_color(p)}} for p in phases_order]
 
-            chart = workbook.add_chart({"type": "doughnut"})
+            chart = workbook.add_chart({"type": "pie"})
             chart.add_series({
                 "name": "배합비 구성",
                 "categories": [sheet_name, 1, 1, n_data, 1],
@@ -1139,13 +1147,13 @@ elif st.session_state.step == 3:
 
     # Formulation 테이블과 성분 다이어그램을 한 페이지에 side-by-side 컬럼으로 배치
     st.markdown('<div class="liquid-glass">', unsafe_allow_html=True)
-    col_table, col_chart = st.columns([1.3, 1])
+    col_table, col_chart = st.columns([1, 1.45])
     with col_table:
         st.markdown("#### 📊 Formulation")
         st.markdown(render_table_html(df), unsafe_allow_html=True)
     with col_chart:
         st.markdown("#### 🔵 성분 다이어그램")
-        components.html(render_donut_html(df), height=470, scrolling=False)
+        components.html(render_donut_html(df), height=570, scrolling=False)
     st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
