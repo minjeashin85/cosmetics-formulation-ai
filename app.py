@@ -87,7 +87,7 @@ for key, default in [
         st.session_state[key] = default
 
 # ------------------------------------------------------------------
-# 마우스 반응형 리퀴드 글라스 캔버스 효과 (True 3D Shader Glass Droplet)
+# 마우스 반응형 리퀴드 글라스 캔버스 효과 (True 3D Shader Glass Droplet v2)
 # ------------------------------------------------------------------
 components.html("""
 <script>
@@ -96,7 +96,7 @@ components.html("""
   const win = window.parent;
   
   // Clean up any old canvas elements if they exist
-  ['liquidCanvas', 'liquidGlassCanvas', 'liquidGlassCanvas3D', 'cfa-spotlight'].forEach(id => {
+  ['liquidCanvas', 'liquidGlassCanvas', 'liquid-glass-canvas', 'liquidGlassCanvas3D', 'cfa-spotlight'].forEach(id => {
     const el = doc.getElementById(id);
     if (el) {
       el.remove();
@@ -104,7 +104,7 @@ components.html("""
   });
   
   // Prevent duplicate Three.js initializations on Streamlit reruns
-  if (win.cfaShaderCanvasInitialized) {
+  if (win.cfaShaderCanvasV2Initialized) {
     return;
   }
   
@@ -133,15 +133,15 @@ components.html("""
   }
   
   loadThree(() => {
-    if (win.cfaShaderCanvasInitialized) {
+    if (win.cfaShaderCanvasV2Initialized) {
       return;
     }
-    win.cfaShaderCanvasInitialized = true;
+    win.cfaShaderCanvasV2Initialized = true;
     
-    let canvas = doc.getElementById('liquid-glass-canvas');
+    let canvas = doc.getElementById('liquid-glass-canvas-v2');
     if (!canvas) {
       canvas = doc.createElement('canvas');
-      canvas.id = 'liquid-glass-canvas';
+      canvas.id = 'liquid-glass-canvas-v2';
       canvas.style.position = 'fixed';
       canvas.style.top = '0';
       canvas.style.left = '0';
@@ -164,6 +164,9 @@ components.html("""
     
     const mouse = new THREE.Vector2(-2.0, -2.0);
     const targetMouse = new THREE.Vector2(-2.0, -2.0);
+    let oldMouse = new THREE.Vector2(-2.0, -2.0);
+    let mouseSpeed = 0.0;
+    let time = 0.0;
     
     doc.addEventListener('mousemove', (e) => {
       targetMouse.x = (e.clientX / win.innerWidth) * 2 - 1;
@@ -175,7 +178,9 @@ components.html("""
       transparent: true,
       uniforms: {
         u_mouse: { value: mouse },
-        u_resolution: { value: new THREE.Vector2(win.innerWidth, win.innerHeight) }
+        u_resolution: { value: new THREE.Vector2(win.innerWidth, win.innerHeight) },
+        u_time: { value: 0.0 },
+        u_speed: { value: 0.0 }
       },
       vertexShader: `
         varying vec2 vUv;
@@ -187,7 +192,60 @@ components.html("""
       fragmentShader: `
         uniform vec2 u_mouse;
         uniform vec2 u_resolution;
+        uniform float u_time;
+        uniform float u_speed;
         varying vec2 vUv;
+
+        // Metaballs 방식의 유기적 병합 함수
+        float calculateField(vec2 st_cor, vec2 m_cor, float aspect) {
+            float field = 0.0;
+            float baseRadius = 0.055; // 크기 작게 조정
+            
+            // 메인 물방울 (마우스 속도에 따른 타원형 왜곡 추가)
+            vec2 stretchFactor = vec2(1.0 + u_speed * 1.5, 1.0 - u_speed * 1.0);
+            vec2 distVec = (st_cor - m_cor) * stretchFactor;
+            float dist = length(distVec);
+            
+            // 미세한 파동(출렁거림) 추가
+            float wave = sin(dist * 50.0 - u_time * 15.0 + u_speed * 10.0) * 0.003 * u_speed;
+            dist += wave; 
+            
+            if (dist < baseRadius) {
+                float r = dist / baseRadius;
+                field += sqrt(1.0 - r * r);
+            }
+            
+            // 비정형 모양을 위한 주변 작은 물방울 파편들 (Metaballs)
+            const int numBeads = 4;
+            vec2 beadOffsets[numBeads];
+            beadOffsets[0] = vec2(0.04, 0.02);
+            beadOffsets[1] = vec2(-0.03, -0.04);
+            beadOffsets[2] = vec2(0.02, -0.06);
+            beadOffsets[3] = vec2(-0.05, 0.01);
+            
+            float beadRadii[numBeads];
+            beadRadii[0] = 0.025;
+            beadRadii[1] = 0.02;
+            beadRadii[2] = 0.018;
+            beadRadii[3] = 0.015;
+
+            for (int i = 0; i < numBeads; i++) {
+                vec2 beadCor = m_cor + beadOffsets[i] * aspect;
+                float beadDist = length(st_cor - beadCor);
+                
+                // 각 파편에도 미세한 진동 추가
+                float beadWave = sin(beadDist * 60.0 - u_time * 18.0) * 0.0015;
+                beadDist += beadWave;
+
+                if (beadDist < beadRadii[i]) {
+                    float r = beadDist / beadRadii[i];
+                    field += sqrt(1.0 - r * r) * 0.8; // 부드럽게 병합
+                }
+            }
+            
+            return field;
+        }
+
         void main() {
             vec2 st = gl_FragCoord.xy / u_resolution;
             vec2 m = u_mouse * 0.5 + 0.5;
@@ -196,35 +254,35 @@ components.html("""
             vec2 st_cor = vec2(st.x * aspect, st.y);
             vec2 m_cor = vec2(m.x * aspect, m.y);
             
-            float dist = distance(st_cor, m_cor);
+            float field = calculateField(st_cor, m_cor, aspect);
             vec4 color = vec4(0.0);
             
-            float radius = 0.12; 
+            // 필드 값을 기반으로 물방울 경계 정의
+            float threshold = 0.4; // 병합 강도 조절
             
-            if (dist < radius) {
-                float r = dist / radius;
-                float h = sqrt(1.0 - r * r); 
-                vec3 normal = normalize(vec3((st_cor - m_cor) / radius, h * 1.5));
+            if (field > threshold) {
+                // 입체감을 위한 노멀 계산 (더 유기적으로 수정)
+                float h = (field - threshold) / (1.0 - threshold);
+                vec3 normal = normalize(vec3((st_cor - m_cor), h * 0.4)); // 더 부드럽게
                 
-                // Apple-style light reflection (highlights)
+                // 애플 스타일 유기적 빛 반사
                 vec3 light1 = normalize(vec3(0.5, 0.7, 1.0));
                 vec3 light2 = normalize(vec3(-0.3, -0.2, 0.5));
                 
-                float spec1 = pow(max(dot(normal, light1), 0.0), 60.0);
-                float spec2 = pow(max(dot(normal, light2), 0.0), 20.0);
-                float rim = pow(1.0 - h, 4.0);
+                float spec1 = pow(max(dot(normal, light1), 0.0), 50.0); // 부드럽게
+                float spec2 = pow(max(dot(normal, light2), 0.0), 15.0);
+                float rim = pow(1.0 - h, 3.5);
                 
-                // Transparent glass 3D thickness refraction
-                float glassReflection = spec1 * 0.8 + spec2 * 0.15 + rim * 0.25;
-                float innerGlow = (1.0 - h) * 0.1;
+                // 유기적인 입체감 구현
+                float glassReflection = spec1 * 0.85 + spec2 * 0.12 + rim * 0.28;
+                float innerGlow = (1.0 - h) * 0.12 + sin(u_time * 2.0 + h * 10.0) * 0.02 * u_speed; // 미세 찰랑임 추가
                 
                 color = vec4(1.0, 1.0, 1.0, glassReflection + innerGlow);
             } 
-            // Drop shadow shading around the bubble (boosts 3D dome illusion)
-            else if (dist < radius + 0.03) {
-                float shadowRatio = (dist - radius) / 0.03;
-                float shadowAlpha = (1.0 - shadowRatio) * 0.08;
-                color = vec4(0.0, 0.0, 0.0, shadowAlpha);
+            // 물방울 외곽 테두리 음영 (더 부드럽고 유기적으로)
+            else if (field > threshold - 0.05) {
+                float shadowAlpha = (field - (threshold - 0.05)) / 0.05;
+                color = vec4(0.0, 0.0, 0.0, shadowAlpha * 0.06);
             }
             
             gl_FragColor = color;
@@ -238,9 +296,19 @@ components.html("""
     function animate() {
       requestAnimationFrame(animate);
       
-      // Easing: smooth drag animation
-      mouse.x += (targetMouse.x - mouse.x) * 0.08;
-      mouse.y += (targetMouse.y - mouse.y) * 0.08;
+      time += 0.016; // 시간 업데이트
+      
+      // 마우스 속도 계산 (출렁거림의 원천)
+      mouseSpeed = mouse.distanceTo(targetMouse) * 1.5; // 속도 감도 조절
+      oldMouse.copy(mouse);
+
+      // 관성(Easing) 적용: 마우스를 더 부드럽게 추적
+      mouse.x += (targetMouse.x - mouse.x) * 0.06;
+      mouse.y += (targetMouse.y - mouse.y) * 0.06;
+      
+      // 유니폼 업데이트
+      material.uniforms.u_time.value = time;
+      material.uniforms.u_speed.value = mouseSpeed;
       
       renderer.render(scene, camera);
     }
