@@ -765,13 +765,33 @@ def icon_cleanser():
     '''
     return svg_wrap(inner, "cleanser", "#d946ef", "#3b82f6")
 
+def get_category_image_or_svg(category_id, default_svg):
+    import base64
+    mapping = {
+        "serum": "logo_serum.png",
+        "lotion": "logo_lotion.png",
+        "cream": "logo_cream.png",
+        "toner": "logo_toner.png",
+        "ampoule": "logo_ampoule.png",
+        "cleanser": "logo_cleanser.png",
+    }
+    img_path = mapping.get(category_id)
+    if img_path and os.path.exists(img_path):
+        try:
+            with open(img_path, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode("utf-8")
+            return f'<img src="data:image/png;base64,{b64}" class="cfa-category-img" style="width:100%; height:100%; object-fit:contain; border-radius:20px;" alt="{category_id}" />'
+        except Exception:
+            pass
+    return default_svg
+
 FORMULATION_TYPES = [
-    {"id": "serum", "label": "세럼", "svg": icon_serum()},
-    {"id": "lotion", "label": "로션", "svg": icon_lotion()},
-    {"id": "cream", "label": "크림", "svg": icon_cream()},
-    {"id": "toner", "label": "토너", "svg": icon_toner()},
-    {"id": "ampoule", "label": "앰플", "svg": icon_ampoule()},
-    {"id": "cleanser", "label": "클렌저", "svg": icon_cleanser()},
+    {"id": "serum", "label": "세럼", "svg": get_category_image_or_svg("serum", icon_serum())},
+    {"id": "lotion", "label": "로션", "svg": get_category_image_or_svg("lotion", icon_lotion())},
+    {"id": "cream", "label": "크림", "svg": get_category_image_or_svg("cream", icon_cream())},
+    {"id": "toner", "label": "토너", "svg": get_category_image_or_svg("toner", icon_toner())},
+    {"id": "ampoule", "label": "앰플", "svg": get_category_image_or_svg("ampoule", icon_ampoule())},
+    {"id": "cleanser", "label": "클렌저", "svg": get_category_image_or_svg("cleanser", icon_cleanser())},
 ]
 
 PHASE_PALETTE = ["#2563EB", "#6366F1", "#0EA5E9", "#818CF8", "#38BDF8", "#93C5FD"]
