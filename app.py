@@ -218,53 +218,13 @@ div[data-testid="column"]:has(.cfa-tile-marker):hover .cfa-name-pill {
     color:#fff !important; transform: translateY(-4px) scale(1.05) !important;
     box-shadow: 0 16px 36px rgba(217,70,239,0.35), inset 0 1px 1px rgba(255,255,255,0.3) !important;
 }
-div[data-testid="column"]:has(.cfa-tile-marker) {
-    position: relative !important;
-}
-/* 카드 자체는 마우스 클릭 이벤트를 통과시키도록 설정 */
 div[data-testid="column"]:has(.cfa-tile-marker) .liquid-glass.cfa-tile {
-    pointer-events: none !important;
-}
-/* stVerticalBlock 래퍼 좌표계 수립 */
-div[data-testid="column"]:has(.cfa-tile-marker) > div,
-div[data-testid="column"]:has(.cfa-tile-marker) [data-testid="stVerticalBlock"],
-div[data-testid="column"]:has(.cfa-tile-marker) .stVerticalBlock {
-    position: relative !important;
-    height: 100% !important;
-    width: 100% !important;
-}
-/* 버튼을 가지고 있는 엘리먼트 컨테이너를 absolute로 카드 전체 크기로 확장 */
-div[data-testid="column"]:has(.cfa-tile-marker) [data-testid="element-container"]:has(.stButton),
-div[data-testid="column"]:has(.cfa-tile-marker) .element-container:has(.stButton) {
-    position: absolute !important;
-    inset: 0 !important;
-    z-index: 99999 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    height: 100% !important;
-    width: 100% !important;
-}
-/* 버튼 컴포넌트 자체를 absolute로 핏시키고 pointer-events 활성화 */
-div[data-testid="column"]:has(.cfa-tile-marker) .stButton {
-    position: absolute !important;
-    inset: 0 !important;
-    height: 100% !important;
-    width: 100% !important;
-}
-div[data-testid="column"]:has(.cfa-tile-marker) .stButton > button {
-    position: absolute !important;
-    inset: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    opacity: 0 !important;
-    cursor: pointer !important;
     pointer-events: auto !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border: none !important;
-    background: transparent !important;
-    box-shadow: none !important;
-    border-radius: 24px !important;
+}
+.cfa-tile-link {
+    text-decoration: none !important;
+    color: inherit !important;
+    display: block !important;
 }
 
 /* SVG 아이콘 내부 부품 호버 애니메이션 */
@@ -1031,15 +991,13 @@ elif st.session_state.step == 1:
     for i, t in enumerate(FORMULATION_TYPES):
         with cols[i % 3]:
             st.markdown(f'''
-            <div class="liquid-glass cfa-tile cfa-tile-marker">
-              <div class="cfa-icon-wrap">{t["svg"]}</div>
-              <div class="cfa-name-pill">{t["label"]}<span class="cfa-liquid-drop2"></span></div>
-            </div>
+            <a href="?ftype={t["id"]}" target="_self" class="cfa-tile-link">
+              <div class="liquid-glass cfa-tile cfa-tile-marker">
+                <div class="cfa-icon-wrap">{t["svg"]}</div>
+                <div class="cfa-name-pill">{t["label"]}<span class="cfa-liquid-drop2"></span></div>
+              </div>
+            </a>
             ''', unsafe_allow_html=True)
-            if st.button(t["label"], key=f"btn_{t['id']}", use_container_width=True):
-                st.session_state.ftype = t
-                st.session_state.step = 2
-                st.rerun()
 
 # ------------------------------------------------------------------
 # STEP 2: 라벨 크롭 및 AI 처방 설계
