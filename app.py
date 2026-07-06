@@ -87,32 +87,122 @@ for key, default in [
         st.session_state[key] = default
 
 # ------------------------------------------------------------------
-# 마우스 반응형 리퀴드 글라스 스포트라이트
+# 마우스 반응형 리퀴드 글라스 캔버스 효과 (Metaballs Fluid Effect)
 # ------------------------------------------------------------------
 components.html("""
 <script>
 (function() {
   const doc = window.parent.document;
-  function ensureSpot() {
-    let spot = doc.getElementById('cfa-spotlight');
-    if (!spot) {
-      spot = doc.createElement('div');
-      spot.id = 'cfa-spotlight';
-      spot.style.position = 'fixed';
-      spot.style.inset = '0';
-      spot.style.pointerEvents = 'none';
-      spot.style.zIndex = '0';
-      spot.style.transition = 'background 0.08s ease-out';
-      doc.body.appendChild(spot);
-    }
-    return spot;
+  const win = window.parent;
+  
+  // Clean up old spotlight div if it exists
+  const oldSpot = doc.getElementById('cfa-spotlight');
+  if (oldSpot) {
+    oldSpot.remove();
   }
-  ensureSpot();
-  doc.addEventListener('mousemove', function(e) {
-    const s = ensureSpot();
-    s.style.background =
-      'radial-gradient(850px circle at ' + e.clientX + 'px ' + e.clientY + 'px, rgba(6,182,212,0.15), rgba(217,70,239,0.06) 30%, transparent 60%)';
-  });
+  
+  // Prevent duplicate canvas creation and animation loops on Streamlit reruns
+  if (win.cfaLiquidEffectInitialized) {
+    return;
+  }
+  win.cfaLiquidEffectInitialized = true;
+  
+  let canvas = doc.getElementById('liquidCanvas');
+  if (!canvas) {
+    canvas = doc.createElement('canvas');
+    canvas.id = 'liquidCanvas';
+    canvas.style.position = 'fixed';
+    canvas.style.inset = '0';
+    canvas.style.pointerEvents = 'none';
+    canvas.style.zIndex = '0';
+    canvas.style.display = 'block';
+    canvas.style.width = '100vw';
+    canvas.style.height = '100vh';
+    // The core of the liquid effect: a combination of blur and contrast filters
+    canvas.style.filter = 'blur(10px) contrast(20)';
+    canvas.style.opacity = '0.35'; // Blend gently into the dark background
+    doc.body.appendChild(canvas);
+  }
+  
+  const ctx = canvas.getContext('2d');
+  
+  function resize() {
+    canvas.width = win.innerWidth;
+    canvas.height = win.innerHeight;
+  }
+  resize();
+  win.addEventListener('resize', resize);
+  
+  const particles = [];
+  const properties = {
+    count: 30, // Number of particles on mousemove
+    minRadius: 5,
+    maxRadius: 25,
+    decay: 0.96
+  };
+  
+  // Sleek brand colors: Cyan (rgba(6, 182, 212)), Purple (rgba(217, 70, 239)), and Soft Blue (rgba(59, 130, 246))
+  const colors = [
+    { r: 6, g: 182, b: 212 },
+    { r: 217, g: 70, b: 239 },
+    { r: 59, g: 130, b: 246 }
+  ];
+  
+  class Particle {
+    constructor(x, y) {
+      this.x = x;
+      this.y = y;
+      this.radius = Math.random() * (properties.maxRadius - properties.minRadius) + properties.minRadius;
+      this.decay = properties.decay;
+      this.life = 1.0;
+      
+      const baseColor = colors[Math.floor(Math.random() * colors.length)];
+      this.r = baseColor.r;
+      this.g = baseColor.g;
+      this.b = baseColor.b;
+      
+      // Slight drift velocity
+      this.vx = (Math.random() - 0.5) * 0.5;
+      this.vy = (Math.random() - 0.5) * 0.5 - 0.25; // Move slightly upward (anti-gravity)
+    }
+    
+    draw() {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+      ctx.fillStyle = `rgba(${this.r}, ${this.g}, ${this.b}, ${this.life})`;
+      ctx.fill();
+    }
+    
+    update() {
+      this.life *= this.decay;
+      this.x += this.vx;
+      this.y += this.vy;
+    }
+  }
+  
+  function createParticles(e) {
+    for (let i = 0; i < properties.count / 10; i++) {
+      particles.push(new Particle(e.clientX, e.clientY));
+    }
+  }
+  
+  function animate() {
+    requestAnimationFrame(animate);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    for (let i = 0; i < particles.length; i++) {
+      particles[i].update();
+      particles[i].draw();
+      
+      if (particles[i].life < 0.01) {
+        particles.splice(i, 1);
+        i--;
+      }
+    }
+  }
+  
+  doc.addEventListener('mousemove', createParticles);
+  animate();
 })();
 </script>
 """, height=0)
