@@ -333,7 +333,11 @@ div[data-testid="column"]:has(.cfa-step2-marker),
 div[class*="stColumn"]:has(.cfa-step2-marker),
 .stColumn:has(.cfa-step2-marker),
 [data-testid="stVerticalBlockBorderWrapper"]:has(.cfa-step2-full-marker),
-div[data-testid="vertical-block"]:has(.cfa-step2-full-marker) {
+div[data-testid="vertical-block"]:has(.cfa-step2-full-marker),
+[data-testid="stVerticalBlockBorderWrapper"]:has(.cfa-results-container-marker),
+div[data-testid="vertical-block"]:has(.cfa-results-container-marker),
+[data-testid="stVerticalBlockBorderWrapper"]:has(.cfa-feedback-container-marker),
+div[data-testid="vertical-block"]:has(.cfa-feedback-container-marker) {
     position: relative;
     border-radius: 24px;
     background: linear-gradient(135deg, rgba(25,15,20,0.65), rgba(15,10,12,0.35)) !important;
@@ -352,7 +356,11 @@ div[data-testid="column"]:has(.cfa-step2-marker)::before,
 div[class*="stColumn"]:has(.cfa-step2-marker)::before,
 .stColumn:has(.cfa-step2-marker)::before,
 [data-testid="stVerticalBlockBorderWrapper"]:has(.cfa-step2-full-marker)::before,
-div[data-testid="vertical-block"]:has(.cfa-step2-full-marker)::before {
+div[data-testid="vertical-block"]:has(.cfa-step2-full-marker)::before,
+[data-testid="stVerticalBlockBorderWrapper"]:has(.cfa-results-container-marker)::before,
+div[data-testid="vertical-block"]:has(.cfa-results-container-marker)::before,
+[data-testid="stVerticalBlockBorderWrapper"]:has(.cfa-feedback-container-marker)::before,
+div[data-testid="vertical-block"]:has(.cfa-feedback-container-marker)::before {
     content: "";
     position: absolute;
     top: 0;
@@ -1637,70 +1645,70 @@ elif st.session_state.step == 3:
     st.markdown("<br>", unsafe_allow_html=True)
 
     # Formulation 테이블과 성분 다이어그램을 한 페이지에 side-by-side 컬럼으로 배치
-    st.markdown('<div class="liquid-glass">', unsafe_allow_html=True)
-    col_table, col_chart = st.columns([1, 1.45])
-    with col_table:
-        st.markdown("#### 📊 Formulation")
-        st.markdown(render_table_html(df), unsafe_allow_html=True)
-    with col_chart:
-        st.markdown("#### 🔵 성분 다이어그램")
-        components.html(render_donut_html(df), height=570, scrolling=False)
-    st.markdown('</div>', unsafe_allow_html=True)
+    with st.container():
+        st.markdown('<div class="cfa-results-container-marker" style="display:none;"></div>', unsafe_allow_html=True)
+        col_table, col_chart = st.columns([1, 1.45])
+        with col_table:
+            st.markdown("#### 📊 Formulation")
+            st.markdown(render_table_html(df), unsafe_allow_html=True)
+        with col_chart:
+            st.markdown("#### 🔵 성분 다이어그램")
+            components.html(render_donut_html(df), height=570, scrolling=False)
 
     st.markdown("<br>", unsafe_allow_html=True)
     
     # ------------------------------------------------------------------
-    # 대화식 배합 피드백 및 조정 기능 (고도화 핵심 요구사항)
+    # 대화식 배합 피드객 및 조정 기능 (고도화 핵심 요구사항)
     # ------------------------------------------------------------------
-    st.markdown('<div class="liquid-glass">', unsafe_allow_html=True)
-    st.markdown("### ⚙️ 배합 커스텀 수정 피드백 루프")
-    st.write("처방된 배합이 마음에 들지 않거나, 특정 요구사항이 있으면 피드백을 전달해 주세요. AI가 배합 비율과 원료를 정교하게 다시 조정합니다.")
-    
-    feedback_text = st.text_input(
-        "피드백 입력",
-        placeholder="예: '단가를 20% 낮추고 병풀 추출물을 2% 추가해줘', '사용감을 촉촉하게 개선하기 위해 보습제를 더 넣어줘'"
-    )
-    
-    if st.button("🔧 피드백 반영하여 처방 재설계", type="primary"):
-        if not feedback_text.strip():
-            st.warning("피드백 내용을 입력해 주세요.")
-        else:
-            placeholder = st.empty()
-            placeholder.markdown('''
-            <div class="liquid-glass cfa-loading-box">
-              <div class="cfa-ring-wrap">
-                <div class="cfa-ring"></div><div class="cfa-ring d2"></div>
-                <div class="cfa-core"></div><div class="cfa-core-inner">🛠️</div>
-              </div>
-              <div class="cfa-loading-label">Gemini AI · Adjusting</div>
-              <div class="cfa-loading-msg">피드백을 반영하여 처방 수정 및 공정 재구성 중...</div>
-            </div>
-            ''', unsafe_allow_html=True)
-            
-            try:
-                # 피드백 수정 실행
-                raw = refine_formulation(ftype, st.session_state.db, st.session_state.raw_formulation, feedback_text)
-                st.session_state.raw_formulation = raw
+    with st.container():
+        st.markdown('<div class="cfa-feedback-container-marker" style="display:none;"></div>', unsafe_allow_html=True)
+        st.markdown("### ⚙️ 배합 커스텀 수정 피드백 루프")
+        st.write("처방된 배합이 마음에 들지 않거나, 특정 요구사항이 있으면 피드백을 전달해 주세요. AI가 배합 비율과 원료를 정교하게 다시 조정합니다.")
+        
+        feedback_text = st.text_input(
+            "피드백 입력",
+            placeholder="예: '단가를 20% 낮추고 병풀 추출물을 2% 추가해줘', '사용감을 촉촉하게 개선하기 위해 보습제를 더 넣어줘'"
+        )
+        
+        if st.button("🔧 피드백 반영하여 처방 재설계", type="primary"):
+            if not feedback_text.strip():
+                st.warning("피드백 내용을 입력해 주세요.")
+            else:
+                placeholder = st.empty()
+                placeholder.markdown('''
+                <div class="liquid-glass cfa-loading-box">
+                  <div class="cfa-ring-wrap">
+                    <div class="cfa-ring"></div><div class="cfa-ring d2"></div>
+                    <div class="cfa-core"></div><div class="cfa-core-inner">🛠️</div>
+                  </div>
+                  <div class="cfa-loading-label">Gemini AI · Adjusting</div>
+                  <div class="cfa-loading-msg">피드백을 반영하여 처방 수정 및 공정 재구성 중...</div>
+                </div>
+                ''', unsafe_allow_html=True)
                 
-                df = normalize_and_cost(raw, st.session_state.db)
-                st.session_state.formulation = df
-                
-                # 제조 공정 및 분석 리포트 업데이트 생략 (요구사항 반영)
-                
-                placeholder.empty()
-                st.success("피드백이 성공적으로 반영되었습니다!")
-                st.rerun()
-            except Exception as e:
-                placeholder.empty()
-                err_str = str(e)
-                if "API_KEY_INVALID" in err_str or "API key not valid" in err_str or "400" in err_str:
-                    st.session_state.api_key = ""
-                    st.session_state.step = 0
-                    st.session_state.api_key_error_msg = "❌ 입력된 Gemini API 키가 올바르지 않거나 만료되었습니다. API 키를 재설정해 주세요."
+                try:
+                    # 피드백 수정 실행
+                    raw = refine_formulation(ftype, st.session_state.db, st.session_state.raw_formulation, feedback_text)
+                    st.session_state.raw_formulation = raw
+                    
+                    df = normalize_and_cost(raw, st.session_state.db)
+                    st.session_state.formulation = df
+                    
+                    # 제조 공정 및 분석 리포트 업데이트 생략 (요구사항 반영)
+                    
+                    placeholder.empty()
+                    st.success("피드백이 성공적으로 반영되었습니다!")
                     st.rerun()
-                else:
-                    st.error(f"피드백 반영 수정에 실패했습니다: {e}")
-    st.markdown('</div>', unsafe_allow_html=True)
+                except Exception as e:
+                    placeholder.empty()
+                    err_str = str(e)
+                    if "API_KEY_INVALID" in err_str or "API key not valid" in err_str or "400" in err_str:
+                        st.session_state.api_key = ""
+                        st.session_state.step = 0
+                        st.session_state.api_key_error_msg = "❌ 입력된 Gemini API 키가 올바르지 않거나 만료되었습니다. API 키를 재설정해 주세요."
+                        st.rerun()
+                    else:
+                        st.error(f"피드백 반영 수정에 실패했습니다: {e}")
 
     # ------------------------------------------------------------------
     # 라벨 크롭 분석 데이터 원본 복원 및 표시
