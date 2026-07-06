@@ -87,7 +87,7 @@ for key, default in [
         st.session_state[key] = default
 
 # ------------------------------------------------------------------
-# 마우스 반응형 리퀴드 글라스 캔버스 효과 (Apple Liquid Magnifier)
+# 마우스 반응형 리퀴드 글라스 캔버스 효과 (Apple Liquid Magnifier v2)
 # ------------------------------------------------------------------
 components.html("""
 <script>
@@ -103,10 +103,25 @@ components.html("""
     }
   });
   
-  // Prevent duplicate insertion of SVG filter, styles and lens div
-  let lens = doc.getElementById('apple-glass-lens');
-  if (lens) {
-    return; // Already initialized in parent DOM
+  // Stop previous animation loop
+  if (win.cfaAppleGlassLensGlowInitialized) {
+    win.cfaCancelAppleGlassLens = true;
+  }
+  win.cfaAppleGlassLensGlowInitialized = true;
+  win.cfaCancelAppleGlassLens = false;
+  
+  // Clean up previous elements if they exist
+  const oldLens = doc.getElementById('apple-glass-lens');
+  if (oldLens) {
+    oldLens.remove();
+  }
+  const oldSvg = doc.getElementById('apple-lens-svg');
+  if (oldSvg) {
+    oldSvg.remove();
+  }
+  const oldStyle = doc.getElementById('apple-lens-style');
+  if (oldStyle) {
+    oldStyle.remove();
   }
   
   // 1. Create SVG Filter container for true DOM distortion/refraction
@@ -116,7 +131,7 @@ components.html("""
       <defs>
         <filter id="apple-liquid-magnifier" x="-50%" y="-50%" width="200%" height="200%">
           <feImage id="svg-bump-map" result="bumpMap"/>
-          <feDisplacementMap in="SourceGraphic" in2="bumpMap" scale="45" xChannelSelector="R" yChannelSelector="G"/>
+          <feDisplacementMap in="SourceGraphic" in2="bumpMap" scale="35" xChannelSelector="R" yChannelSelector="G"/>
         </filter>
       </defs>
     </svg>
@@ -129,8 +144,8 @@ components.html("""
   styleEl.textContent = `
     #apple-glass-lens {
         position: fixed;
-        width: 150px;
-        height: 150px;
+        width: 100px;
+        height: 100px;
         border-radius: 50%;
         pointer-events: none;
         z-index: 999999;
@@ -140,19 +155,34 @@ components.html("""
         backdrop-filter: url(#apple-liquid-magnifier);
         -webkit-backdrop-filter: url(#apple-liquid-magnifier);
         background: 
-            radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%),
+            radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 50%),
             radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0) 60%, rgba(255, 255, 255, 0.08) 100%);
         box-shadow: 
-            inset 0 6px 12px rgba(255, 255, 255, 0.5),
-            inset 0 -6px 12px rgba(0, 0, 0, 0.08),
-            0 10px 24px rgba(0, 0, 0, 0.12);
+            inset 0 4px 8px rgba(255, 255, 255, 0.5),
+            inset 0 -4px 8px rgba(0, 0, 0, 0.08),
+            0 8px 20px rgba(0, 0, 0, 0.1);
+        transition: background 0.2s, box-shadow 0.2s;
         will-change: left, top, transform;
+    }
+    #apple-glass-lens.glowing {
+        background: 
+            radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0) 60%),
+            radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.2) 100%);
+        box-shadow: 
+            inset 0 4px 10px rgba(255, 255, 255, 0.7),
+            inset 0 -4px 10px rgba(255, 255, 255, 0.3),
+            0 0 25px rgba(255, 255, 255, 0.45),
+            0 8px 20px rgba(0, 0, 0, 0.08);
+    }
+    .liquid-hover-glow {
+        filter: brightness(1.15) drop-shadow(0 0 8px rgba(255, 255, 255, 0.3)) !important;
+        transition: filter 0.2s !important;
     }
   `;
   doc.head.appendChild(styleEl);
   
   // 3. Create the physical glass lens element
-  lens = doc.createElement('div');
+  const lens = doc.createElement('div');
   lens.id = 'apple-glass-lens';
   doc.body.appendChild(lens);
   
@@ -174,10 +204,9 @@ components.html("""
           let g_val = 128;
           
           if (r < 1.0) {
-              // Convex spherical lens displacement function
-              const factor = (1.0 - r * r) * r * 0.6;
-              r_val = 128 - nx * factor * 127; // Red: X-axis displacement
-              g_val = 128 - ny * factor * 127; // Green: Y-axis displacement
+              const factor = (1.0 - r * r) * r * 0.55;
+              r_val = 128 - nx * factor * 127;
+              g_val = 128 - ny * factor * 127;
           }
           
           const idx = (y * size + x) * 4;
@@ -195,14 +224,46 @@ components.html("""
   let currentY = win.innerHeight / 2;
   let targetX = currentX, targetY = currentY;
   let lastX = currentX, lastY = currentY;
+  let lastHoveredEl = null;
 
-  doc.addEventListener('mousemove', (e) => {
-      targetX = e.clientX;
-      targetY = e.clientY;
-  });
+  if (win.cfaOnMouseMove) {
+    doc.removeEventListener('mousemove', win.cfaOnMouseMove);
+  }
+
+  win.cfaOnMouseMove = (e) => {
+    targetX = e.clientX;
+    targetY = e.clientY;
+
+    const hoveredEl = doc.elementFromPoint(e.clientX, e.clientY);
+    if (hoveredEl) {
+      const clickable = hoveredEl.closest('a') || hoveredEl.closest('button') || hoveredEl.closest('[role="button"]') || win.getComputedStyle(hoveredEl).cursor === 'pointer';
+      if (clickable) {
+        const target = clickable === true ? hoveredEl : clickable;
+        lens.classList.add('glowing');
+        if (lastHoveredEl !== target) {
+          if (lastHoveredEl) {
+            lastHoveredEl.classList.remove('liquid-hover-glow');
+          }
+          target.classList.add('liquid-hover-glow');
+          lastHoveredEl = target;
+        }
+      } else {
+        lens.classList.remove('glowing');
+        if (lastHoveredEl) {
+          lastHoveredEl.classList.remove('liquid-hover-glow');
+          lastHoveredEl = null;
+        }
+      }
+    }
+  };
+
+  doc.addEventListener('mousemove', win.cfaOnMouseMove);
 
   function animateLens() {
-      // Fluid spring latency decay (0.18 factor)
+      if (win.cfaCancelAppleGlassLens) {
+        return;
+      }
+      // Fluid spring latency decay
       currentX += (targetX - currentX) * 0.18;
       currentY += (targetY - currentY) * 0.18;
       
@@ -217,17 +278,13 @@ components.html("""
       lens.style.left = `${currentX}px`;
       lens.style.top = `${currentY}px`;
       
-      // Stretch in movement direction based on speed velocity
-      const stretch = Math.min(speed * 0.08, 0.35); 
+      const stretch = Math.min(speed * 0.06, 0.25); 
       lens.style.transform = `translate(-50%, -50%) rotate(${angle}rad) scale(${1 + stretch}, ${1 - stretch * 0.4})`;
       
       requestAnimationFrame(animateLens);
   }
   
-  if (!win.cfaAppleGlassLensInitialized) {
-    win.cfaAppleGlassLensInitialized = true;
-    animateLens();
-  }
+  animateLens();
 })();
 </script>
 """, height=0)
