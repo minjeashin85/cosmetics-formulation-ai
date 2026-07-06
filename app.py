@@ -87,7 +87,7 @@ for key, default in [
         st.session_state[key] = default
 
 # ------------------------------------------------------------------
-# 마우스 반응형 리퀴드 글라스 캔버스 효과 (True 3D Shader Glass Droplet v2)
+# 마우스 반응형 리퀴드 글라스 캔버스 효과 (Apple Liquid Lens)
 # ------------------------------------------------------------------
 components.html("""
 <script>
@@ -96,7 +96,7 @@ components.html("""
   const win = window.parent;
   
   // Clean up any old canvas elements if they exist
-  ['liquidCanvas', 'liquidGlassCanvas', 'liquid-glass-canvas', 'liquidGlassCanvas3D', 'cfa-spotlight'].forEach(id => {
+  ['liquidCanvas', 'liquidGlassCanvas', 'liquid-glass-canvas', 'liquid-glass-canvas-v2', 'liquidGlassCanvas3D', 'cfa-spotlight'].forEach(id => {
     const el = doc.getElementById(id);
     if (el) {
       el.remove();
@@ -104,7 +104,7 @@ components.html("""
   });
   
   // Prevent duplicate Three.js initializations on Streamlit reruns
-  if (win.cfaShaderCanvasV2Initialized) {
+  if (win.cfaAppleLiquidLensInitialized) {
     return;
   }
   
@@ -133,15 +133,15 @@ components.html("""
   }
   
   loadThree(() => {
-    if (win.cfaShaderCanvasV2Initialized) {
+    if (win.cfaAppleLiquidLensInitialized) {
       return;
     }
-    win.cfaShaderCanvasV2Initialized = true;
+    win.cfaAppleLiquidLensInitialized = true;
     
-    let canvas = doc.getElementById('liquid-glass-canvas-v2');
+    let canvas = doc.getElementById('apple-liquid-lens');
     if (!canvas) {
       canvas = doc.createElement('canvas');
-      canvas.id = 'liquid-glass-canvas-v2';
+      canvas.id = 'apple-liquid-lens';
       canvas.style.position = 'fixed';
       canvas.style.top = '0';
       canvas.style.left = '0';
@@ -163,14 +163,11 @@ components.html("""
     renderer.setPixelRatio(Math.min(win.devicePixelRatio, 2));
     
     const mouse = new THREE.Vector2(-2.0, -2.0);
-    const targetMouse = new THREE.Vector2(-2.0, -2.0);
-    let oldMouse = new THREE.Vector2(-2.0, -2.0);
-    let mouseSpeed = 0.0;
-    let time = 0.0;
     
+    // 관성/지연(Easing)을 완전히 제거하고 마우스 포인터 위치에 즉시 고정
     doc.addEventListener('mousemove', (e) => {
-      targetMouse.x = (e.clientX / win.innerWidth) * 2 - 1;
-      targetMouse.y = -(e.clientY / win.innerHeight) * 2 + 1;
+      mouse.x = (e.clientX / win.innerWidth) * 2 - 1;
+      mouse.y = -(e.clientY / win.innerHeight) * 2 + 1;
     });
     
     const geometry = new THREE.PlaneGeometry(2, 2);
@@ -178,9 +175,7 @@ components.html("""
       transparent: true,
       uniforms: {
         u_mouse: { value: mouse },
-        u_resolution: { value: new THREE.Vector2(win.innerWidth, win.innerHeight) },
-        u_time: { value: 0.0 },
-        u_speed: { value: 0.0 }
+        u_resolution: { value: new THREE.Vector2(win.innerWidth, win.innerHeight) }
       },
       vertexShader: `
         varying vec2 vUv;
@@ -192,60 +187,7 @@ components.html("""
       fragmentShader: `
         uniform vec2 u_mouse;
         uniform vec2 u_resolution;
-        uniform float u_time;
-        uniform float u_speed;
         varying vec2 vUv;
-
-        // Metaballs 방식의 유기적 병합 함수
-        float calculateField(vec2 st_cor, vec2 m_cor, float aspect) {
-            float field = 0.0;
-            float baseRadius = 0.055; // 크기 작게 조정
-            
-            // 메인 물방울 (마우스 속도에 따른 타원형 왜곡 추가)
-            vec2 stretchFactor = vec2(1.0 + u_speed * 1.5, 1.0 - u_speed * 1.0);
-            vec2 distVec = (st_cor - m_cor) * stretchFactor;
-            float dist = length(distVec);
-            
-            // 미세한 파동(출렁거림) 추가
-            float wave = sin(dist * 50.0 - u_time * 15.0 + u_speed * 10.0) * 0.003 * u_speed;
-            dist += wave; 
-            
-            if (dist < baseRadius) {
-                float r = dist / baseRadius;
-                field += sqrt(1.0 - r * r);
-            }
-            
-            // 비정형 모양을 위한 주변 작은 물방울 파편들 (Metaballs)
-            const int numBeads = 4;
-            vec2 beadOffsets[numBeads];
-            beadOffsets[0] = vec2(0.04, 0.02);
-            beadOffsets[1] = vec2(-0.03, -0.04);
-            beadOffsets[2] = vec2(0.02, -0.06);
-            beadOffsets[3] = vec2(-0.05, 0.01);
-            
-            float beadRadii[numBeads];
-            beadRadii[0] = 0.025;
-            beadRadii[1] = 0.02;
-            beadRadii[2] = 0.018;
-            beadRadii[3] = 0.015;
-
-            for (int i = 0; i < numBeads; i++) {
-                vec2 beadCor = m_cor + beadOffsets[i] * aspect;
-                float beadDist = length(st_cor - beadCor);
-                
-                // 각 파편에도 미세한 진동 추가
-                float beadWave = sin(beadDist * 60.0 - u_time * 18.0) * 0.0015;
-                beadDist += beadWave;
-
-                if (beadDist < beadRadii[i]) {
-                    float r = beadDist / beadRadii[i];
-                    field += sqrt(1.0 - r * r) * 0.8; // 부드럽게 병합
-                }
-            }
-            
-            return field;
-        }
-
         void main() {
             vec2 st = gl_FragCoord.xy / u_resolution;
             vec2 m = u_mouse * 0.5 + 0.5;
@@ -254,35 +196,39 @@ components.html("""
             vec2 st_cor = vec2(st.x * aspect, st.y);
             vec2 m_cor = vec2(m.x * aspect, m.y);
             
-            float field = calculateField(st_cor, m_cor, aspect);
+            float dist = length(st_cor - m_cor);
             vec4 color = vec4(0.0);
             
-            // 필드 값을 기반으로 물방울 경계 정의
-            float threshold = 0.4; // 병합 강도 조절
+            // 리퀴드 글라스 렌즈 크기 설정
+            float radius = 0.08; 
             
-            if (field > threshold) {
-                // 입체감을 위한 노멀 계산 (더 유기적으로 수정)
-                float h = (field - threshold) / (1.0 - threshold);
-                vec3 normal = normalize(vec3((st_cor - m_cor), h * 0.4)); // 더 부드럽게
+            if (dist < radius) {
+                float r = dist / radius;
+                // 볼록거울 형상을 위한 구면 높이 계산
+                float h = sqrt(1.0 - r * r); 
                 
-                // 애플 스타일 유기적 빛 반사
-                vec3 light1 = normalize(vec3(0.5, 0.7, 1.0));
-                vec3 light2 = normalize(vec3(-0.3, -0.2, 0.5));
+                // 3D 법선 벡터(Normal) 계산 (볼록한 입체감의 핵심)
+                vec3 normal = normalize(vec3((st_cor - m_cor) / radius, h * 2.5));
                 
-                float spec1 = pow(max(dot(normal, light1), 0.0), 50.0); // 부드럽게
-                float spec2 = pow(max(dot(normal, light2), 0.0), 15.0);
-                float rim = pow(1.0 - h, 3.5);
+                // 애플 특유의 정교한 듀얼 화이트 하이라이트 (광원 2개)
+                vec3 light1 = normalize(vec3(0.3, 0.8, 1.0));
+                vec3 light2 = normalize(vec3(-0.4, 0.5, 0.8));
                 
-                // 유기적인 입체감 구현
-                float glassReflection = spec1 * 0.85 + spec2 * 0.12 + rim * 0.28;
-                float innerGlow = (1.0 - h) * 0.12 + sin(u_time * 2.0 + h * 10.0) * 0.02 * u_speed; // 미세 찰랑임 추가
+                float spec1 = pow(max(dot(normal, light1), 0.0), 90.0) * 1.2; // 날카로운 하이라이트
+                float spec2 = pow(max(dot(normal, light2), 0.0), 30.0) * 0.3; // 부드러운 반사광
                 
-                color = vec4(1.0, 1.0, 1.0, glassReflection + innerGlow);
+                // 가장자리 리플렉션 (Rim Light)
+                float rim = pow(1.0 - h, 3.0) * 0.35;
+                
+                // 중앙은 완벽히 투명하여 배경이 보이고, 표면에 유리 질감만 얹어짐
+                float glassEffect = spec1 + spec2 + rim;
+                color = vec4(1.0, 1.0, 1.0, glassEffect);
             } 
-            // 물방울 외곽 테두리 음영 (더 부드럽고 유기적으로)
-            else if (field > threshold - 0.05) {
-                float shadowAlpha = (field - (threshold - 0.05)) / 0.05;
-                color = vec4(0.0, 0.0, 0.0, shadowAlpha * 0.06);
+            // 물방울 바로 밑에 맺히는 아주 미세한 내부 그림자 (입체감 극대화)
+            else if (dist < radius + 0.015) {
+                float shadowRatio = (dist - radius) / 0.015;
+                float shadowAlpha = (1.0 - shadowRatio) * 0.07;
+                color = vec4(0.0, 0.0, 0.0, shadowAlpha);
             }
             
             gl_FragColor = color;
@@ -295,21 +241,6 @@ components.html("""
     
     function animate() {
       requestAnimationFrame(animate);
-      
-      time += 0.016; // 시간 업데이트
-      
-      // 마우스 속도 계산 (출렁거림의 원천)
-      mouseSpeed = mouse.distanceTo(targetMouse) * 1.5; // 속도 감도 조절
-      oldMouse.copy(mouse);
-
-      // 관성(Easing) 적용: 마우스를 더 부드럽게 추적
-      mouse.x += (targetMouse.x - mouse.x) * 0.06;
-      mouse.y += (targetMouse.y - mouse.y) * 0.06;
-      
-      // 유니폼 업데이트
-      material.uniforms.u_time.value = time;
-      material.uniforms.u_speed.value = mouseSpeed;
-      
       renderer.render(scene, camera);
     }
     animate();
