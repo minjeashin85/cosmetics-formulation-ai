@@ -129,7 +129,11 @@ iframe { border: none !important; background: transparent !important; }
 
 /* 컬럼 및 컨테이너 글라스모피즘 스타일링 (빈 박스 제거 기법) */
 div[data-testid="column"]:has(.cfa-step0-marker),
+div[class*="stColumn"]:has(.cfa-step0-marker),
+.stColumn:has(.cfa-step0-marker),
 div[data-testid="column"]:has(.cfa-step2-marker),
+div[class*="stColumn"]:has(.cfa-step2-marker),
+.stColumn:has(.cfa-step2-marker),
 [data-testid="stVerticalBlockBorderWrapper"]:has(.cfa-step2-full-marker),
 div[data-testid="vertical-block"]:has(.cfa-step2-full-marker) {
     position: relative;
@@ -144,7 +148,11 @@ div[data-testid="vertical-block"]:has(.cfa-step2-full-marker) {
     margin-bottom: 20px !important;
 }
 div[data-testid="column"]:has(.cfa-step0-marker)::before,
+div[class*="stColumn"]:has(.cfa-step0-marker)::before,
+.stColumn:has(.cfa-step0-marker)::before,
 div[data-testid="column"]:has(.cfa-step2-marker)::before,
+div[class*="stColumn"]:has(.cfa-step2-marker)::before,
+.stColumn:has(.cfa-step2-marker)::before,
 [data-testid="stVerticalBlockBorderWrapper"]:has(.cfa-step2-full-marker)::before,
 div[data-testid="vertical-block"]:has(.cfa-step2-full-marker)::before {
     content: "";
@@ -193,10 +201,16 @@ div[data-testid="vertical-block"]:has(.cfa-step2-full-marker)::before {
 .liquid-glass::before { content: ""; position: absolute; top:0; left:10%; right:10%; height:1.5px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); }
 
 /* 제형 선택 그리드 및 호버 효과 */
-div[data-testid="column"]:has(.cfa-tile-marker) { position: relative; }
+div[data-testid="column"]:has(.cfa-tile-marker),
+div[class*="stColumn"]:has(.cfa-tile-marker),
+.stColumn:has(.cfa-tile-marker) {
+    position: relative;
+}
 .cfa-tile { padding: 24px 8px 16px 8px; text-align:center; margin-bottom: 14px; display:flex; flex-direction:column; align-items:center; }
 .cfa-icon-wrap { width: 140px; height: 140px; margin: 0 auto; transition: transform .5s cubic-bezier(.175,.885,.32,1.275), filter .5s; }
-div[data-testid="column"]:has(.cfa-tile-marker):hover .cfa-icon-wrap {
+div[data-testid="column"]:has(.cfa-tile-marker):hover .cfa-icon-wrap,
+div[class*="stColumn"]:has(.cfa-tile-marker):hover .cfa-icon-wrap,
+.stColumn:has(.cfa-tile-marker):hover .cfa-icon-wrap {
     transform: scale(1.18) rotate(-4deg) !important;
     filter: drop-shadow(0 0 25px rgba(6,182,212,0.45)) !important;
 }
@@ -242,21 +256,33 @@ div[data-testid="column"]:has(.cfa-tile-marker):hover .cfa-icon-wrap {
     40%  { transform: translate(-50px,-20px) scale(1.05); opacity:0.65; }
     100% { transform: translate(0,0) scale(0.6); opacity:0.25; }
 }
-div[data-testid="column"]:has(.cfa-tile-marker):hover .cfa-name-pill {
+div[data-testid="column"]:has(.cfa-tile-marker):hover .cfa-name-pill,
+div[class*="stColumn"]:has(.cfa-tile-marker):hover .cfa-name-pill,
+.stColumn:has(.cfa-tile-marker):hover .cfa-name-pill {
     background: linear-gradient(135deg, rgba(217,70,239,0.7), rgba(59,130,246,0.65)) !important;
     border-color: rgba(255,255,255,0.4) !important;
     color:#fff !important; transform: translateY(-4px) scale(1.05) !important;
     box-shadow: 0 16px 36px rgba(217,70,239,0.35), inset 0 1px 1px rgba(255,255,255,0.3) !important;
 }
-div[data-testid="column"] {
+div[data-testid="column"],
+div[class*="stColumn"],
+.stColumn {
     position: relative !important;
 }
-div[data-testid="column"] .liquid-glass.cfa-tile {
+div[data-testid="column"] .liquid-glass.cfa-tile,
+div[class*="stColumn"] .liquid-glass.cfa-tile,
+.stColumn .liquid-glass.cfa-tile {
     pointer-events: none !important;
 }
 div[data-testid="column"] > div,
 div[data-testid="column"] [data-testid="stVerticalBlock"],
-div[data-testid="column"] .stVerticalBlock {
+div[data-testid="column"] .stVerticalBlock,
+div[class*="stColumn"] > div,
+div[class*="stColumn"] [data-testid="stVerticalBlock"],
+div[class*="stColumn"] .stVerticalBlock,
+.stColumn > div,
+.stColumn [data-testid="stVerticalBlock"],
+.stColumn .stVerticalBlock {
     position: relative !important;
     height: 100% !important;
     width: 100% !important;
@@ -293,10 +319,32 @@ div[class*="st-key-btn_"] button {
 @keyframes cfaCapPop { 0%,100%{transform:translateY(0);} 45%{transform:translateY(-6px);} }
 @keyframes cfaBubbleUp { 0%{transform:translateY(0) scale(0.5); opacity:0;} 25%{opacity:0.8; transform:translateY(-8px) scale(1);} 100%{transform:translateY(-36px) scale(0.4); opacity:0;} }
 @keyframes cfaShineSweep { 0%{transform:translateX(-35px); opacity:0;} 35%{opacity:.7;} 100%{transform:translateX(35px); opacity:0;} }
-.cfa-type-grid div[data-testid="column"]:hover .cfa-body-anim { animation: cfaWobble .8s ease-in-out; transform-box: fill-box; transform-origin: 50% 100%; }
-.cfa-type-grid div[data-testid="column"]:hover .cfa-cap-anim { animation: cfaCapPop .8s ease-in-out; transform-box: fill-box; transform-origin: 50% 100%; }
-.cfa-type-grid div[data-testid="column"]:hover .cfa-bubble-anim { animation: cfaBubbleUp 1.2s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
-.cfa-type-grid div[data-testid="column"]:hover .cfa-shine-anim { animation: cfaShineSweep .95s ease-in-out infinite; }
+div[data-testid="column"]:has(.cfa-tile-marker):hover .cfa-body-anim,
+div[class*="stColumn"]:has(.cfa-tile-marker):hover .cfa-body-anim,
+.stColumn:has(.cfa-tile-marker):hover .cfa-body-anim {
+    animation: cfaWobble .8s ease-in-out;
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+}
+div[data-testid="column"]:has(.cfa-tile-marker):hover .cfa-cap-anim,
+div[class*="stColumn"]:has(.cfa-tile-marker):hover .cfa-cap-anim,
+.stColumn:has(.cfa-tile-marker):hover .cfa-cap-anim {
+    animation: cfaCapPop .8s ease-in-out;
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+}
+div[data-testid="column"]:has(.cfa-tile-marker):hover .cfa-bubble-anim,
+div[class*="stColumn"]:has(.cfa-tile-marker):hover .cfa-bubble-anim,
+.stColumn:has(.cfa-tile-marker):hover .cfa-bubble-anim {
+    animation: cfaBubbleUp 1.2s ease-in-out infinite;
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+}
+div[data-testid="column"]:has(.cfa-tile-marker):hover .cfa-shine-anim,
+div[class*="stColumn"]:has(.cfa-tile-marker):hover .cfa-shine-anim,
+.stColumn:has(.cfa-tile-marker):hover .cfa-shine-anim {
+    animation: cfaShineSweep .95s ease-in-out infinite;
+}
 
 /* 로딩 애니메이션 - Glowing Beaker Liquid */
 .cfa-loading-box { padding: 64px 20px; text-align:center; }
@@ -1111,19 +1159,21 @@ elif st.session_state.step == 1:
         st.warning(st.session_state.api_key_warning)
         del st.session_state.api_key_warning
     
-    cols = st.columns(3)
-    for i, t in enumerate(FORMULATION_TYPES):
-        with cols[i % 3]:
-            st.markdown(f'''
-            <div class="liquid-glass cfa-tile cfa-tile-marker">
-              <div class="cfa-icon-wrap">{t["svg"]}</div>
-              <div class="cfa-name-pill">{t["label"]}<span class="cfa-liquid-drop2"></span></div>
-            </div>
-            ''', unsafe_allow_html=True)
-            if st.button(t["label"], key=f"btn_{t['id']}", use_container_width=True):
-                st.session_state.ftype = t
-                st.session_state.step = 2
-                st.rerun()
+    # 2 rows of 3 columns
+    for row_idx, chunk in enumerate([FORMULATION_TYPES[:3], FORMULATION_TYPES[3:]]):
+        cols = st.columns(3)
+        for i, t in enumerate(chunk):
+            with cols[i]:
+                st.markdown(f'''
+                <div class="liquid-glass cfa-tile cfa-tile-marker">
+                  <div class="cfa-icon-wrap">{t["svg"]}</div>
+                  <div class="cfa-name-pill">{t["label"]}<span class="cfa-liquid-drop2"></span></div>
+                </div>
+                ''', unsafe_allow_html=True)
+                if st.button(t["label"], key=f"btn_{t['id']}", use_container_width=True):
+                    st.session_state.ftype = t
+                    st.session_state.step = 2
+                    st.rerun()
 
 # ------------------------------------------------------------------
 # STEP 2: 라벨 크롭 및 AI 처방 설계
