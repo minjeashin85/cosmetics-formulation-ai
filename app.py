@@ -248,15 +248,15 @@ div[data-testid="column"]:has(.cfa-tile-marker):hover .cfa-name-pill {
     color:#fff !important; transform: translateY(-4px) scale(1.05) !important;
     box-shadow: 0 16px 36px rgba(217,70,239,0.35), inset 0 1px 1px rgba(255,255,255,0.3) !important;
 }
-div[data-testid="column"]:has(.cfa-tile-marker) {
+div[data-testid="column"] {
     position: relative !important;
 }
-div[data-testid="column"]:has(.cfa-tile-marker) .liquid-glass.cfa-tile {
+div[data-testid="column"] .liquid-glass.cfa-tile {
     pointer-events: none !important;
 }
-div[data-testid="column"]:has(.cfa-tile-marker) > div,
-div[data-testid="column"]:has(.cfa-tile-marker) [data-testid="stVerticalBlock"],
-div[data-testid="column"]:has(.cfa-tile-marker) .stVerticalBlock {
+div[data-testid="column"] > div,
+div[data-testid="column"] [data-testid="stVerticalBlock"],
+div[data-testid="column"] .stVerticalBlock {
     position: relative !important;
     height: 100% !important;
     width: 100% !important;
