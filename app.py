@@ -1189,14 +1189,32 @@ def zoom_dialog(img, caption):
     st.image(img, use_container_width=True, caption=caption)
 
 # ------------------------------------------------------------------
+# 로고 이미지 로드 (base64 인코딩)
+# ------------------------------------------------------------------
+import base64
+def load_logo_base64():
+    logo_path = "logo.png"
+    if os.path.exists(logo_path):
+        with open(logo_path, "rb") as f:
+            return base64.b64encode(f.read()).decode("utf-8")
+    return ""
+
+LOGO_BASE64 = load_logo_base64()
+
+# ------------------------------------------------------------------
 # 헤더 및 레이아웃
 # ------------------------------------------------------------------
 hcol1, hcol2 = st.columns([4, 2])
 with hcol1:
-    st.markdown('''
+    if LOGO_BASE64:
+        logo_html = f'<img src="data:image/png;base64,{LOGO_BASE64}" style="width:54px; height:54px; border-radius:16px; box-shadow: 0 0 20px rgba(255, 0, 160, 0.35); object-fit: cover;" alt="Logo" />'
+    else:
+        logo_html = '<div class="badge">🧪</div>'
+
+    st.markdown(f'''
     <div class="cfa-header-row">
       <div class="cfa-brand">
-        <div class="badge">🧪</div>
+        {logo_html}
         <div>
           <h1>Cosmetics Formulation AI</h1>
           <p>AI-Driven Formulation & Cost Engineering</p>
