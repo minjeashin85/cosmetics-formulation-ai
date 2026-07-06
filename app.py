@@ -87,7 +87,7 @@ for key, default in [
         st.session_state[key] = default
 
 # ------------------------------------------------------------------
-# 마우스 반응형 리퀴드 글라스 캔버스 효과 (Apple Liquid Lens)
+# 마우스 반응형 리퀴드 글라스 캔버스 효과 (Apple Teardrop Glass)
 # ------------------------------------------------------------------
 components.html("""
 <script>
@@ -96,7 +96,7 @@ components.html("""
   const win = window.parent;
   
   // Clean up any old canvas elements if they exist
-  ['liquidCanvas', 'liquidGlassCanvas', 'liquid-glass-canvas', 'liquid-glass-canvas-v2', 'liquidGlassCanvas3D', 'cfa-spotlight'].forEach(id => {
+  ['liquidCanvas', 'liquidGlassCanvas', 'liquid-glass-canvas', 'liquid-glass-canvas-v2', 'apple-liquid-lens', 'liquidGlassCanvas3D', 'cfa-spotlight'].forEach(id => {
     const el = doc.getElementById(id);
     if (el) {
       el.remove();
@@ -104,7 +104,7 @@ components.html("""
   });
   
   // Prevent duplicate Three.js initializations on Streamlit reruns
-  if (win.cfaAppleLiquidLensInitialized) {
+  if (win.cfaAppleTeardropGlassInitialized) {
     return;
   }
   
@@ -133,15 +133,15 @@ components.html("""
   }
   
   loadThree(() => {
-    if (win.cfaAppleLiquidLensInitialized) {
+    if (win.cfaAppleTeardropGlassInitialized) {
       return;
     }
-    win.cfaAppleLiquidLensInitialized = true;
+    win.cfaAppleTeardropGlassInitialized = true;
     
-    let canvas = doc.getElementById('apple-liquid-lens');
+    let canvas = doc.getElementById('apple-teardrop-glass');
     if (!canvas) {
       canvas = doc.createElement('canvas');
-      canvas.id = 'apple-liquid-lens';
+      canvas.id = 'apple-teardrop-glass';
       canvas.style.position = 'fixed';
       canvas.style.top = '0';
       canvas.style.left = '0';
@@ -162,19 +162,25 @@ components.html("""
     renderer.setSize(win.innerWidth, win.innerHeight);
     renderer.setPixelRatio(Math.min(win.devicePixelRatio, 2));
     
-    const mouse = new THREE.Vector2(-2.0, -2.0);
+    // 물리 기반 마우스 트래킹 변수 (유체 관성의 핵심)
+    const currentPos = new THREE.Vector2(-2.0, -2.0);
+    const targetMouse = new THREE.Vector2(-2.0, -2.0);
+    const velocity = new THREE.Vector2(0, 0);
     
-    // 관성/지연(Easing)을 완전히 제거하고 마우스 포인터 위치에 즉시 고정
+    const stiffness = 0.12; // 스프링 탄성 (낮을수록 더 출렁임)
+    const damping = 0.78;   // 감쇠 저항 (물속 같은 부드러움 제공)
+    
     doc.addEventListener('mousemove', (e) => {
-      mouse.x = (e.clientX / win.innerWidth) * 2 - 1;
-      mouse.y = -(e.clientY / win.innerHeight) * 2 + 1;
+      targetMouse.x = (e.clientX / win.innerWidth) * 2 - 1;
+      targetMouse.y = -(e.clientY / win.innerHeight) * 2 + 1;
     });
     
     const geometry = new THREE.PlaneGeometry(2, 2);
     const material = new THREE.ShaderMaterial({
       transparent: true,
       uniforms: {
-        u_mouse: { value: mouse },
+        u_mouse: { value: currentPos },
+        u_velocity: { value: velocity },
         u_resolution: { value: new THREE.Vector2(win.innerWidth, win.innerHeight) }
       },
       vertexShader: `
@@ -186,8 +192,10 @@ components.html("""
       `,
       fragmentShader: `
         uniform vec2 u_mouse;
+        uniform vec2 u_velocity;
         uniform vec2 u_resolution;
         varying vec2 vUv;
+        
         void main() {
             vec2 st = gl_FragCoord.xy / u_resolution;
             vec2 m = u_mouse * 0.5 + 0.5;
@@ -196,38 +204,64 @@ components.html("""
             vec2 st_cor = vec2(st.x * aspect, st.y);
             vec2 m_cor = vec2(m.x * aspect, m.y);
             
-            float dist = length(st_cor - m_cor);
+            // 물리 엔진에서 계산된 속도를 화면 비율에 맞춰 보정
+            vec2 v_cor = vec2(u_velocity.x * aspect, u_velocity.y) * 1.5;
+            float speed = length(v_cor);
+            
+            vec2 to_pixel = st_cor - m_cor;
+            float dist = length(to_pixel);
+            
+            // 기본 반지름 설정
+            float baseRadius = 0.07; 
+            float finalRadius = baseRadius;
+            
+            // [핵심] 이동 방향에 따른 실시간 물방울(Teardrop) 형상 변형 로직
+            if (speed > 0.001 && dist > 0.0) {
+                vec2 dir = normalize(v_cor);
+                vec2 normToPixel = normalize(to_pixel);
+                float dotProd = dot(normToPixel, dir); // 1.0이면 진행방향(앞), -1.0이면 꼬리방향(뒤)
+                
+                float stretchFactor = speed * 15.0; // 변형 강도
+                
+                if (dotProd < 0.0) {
+                    // 뒤쪽(꼬리): 속도가 빠를수록 진행 방향 반대로 길게 늘어남
+                    finalRadius += abs(dotProd) * stretchFactor * baseRadius * 1.8;
+                } else {
+                    // 앞쪽: 공기 저항을 받아 미세하게 납작해짐
+                    finalRadius -= dotProd * stretchFactor * baseRadius * 0.3;
+                }
+                
+                // 옆면: 부피 보존 법칙 시각화를 위해 날씬하게 수축
+                float sideDot = abs(dot(normToPixel, vec2(-dir.y, dir.x)));
+                finalRadius -= sideDot * stretchFactor * baseRadius * 0.5;
+            }
+            
             vec4 color = vec4(0.0);
             
-            // 리퀴드 글라스 렌즈 크기 설정
-            float radius = 0.08; 
-            
-            if (dist < radius) {
-                float r = dist / radius;
-                // 볼록거울 형상을 위한 구면 높이 계산
+            if (dist < finalRadius) {
+                float r = dist / finalRadius;
                 float h = sqrt(1.0 - r * r); 
                 
-                // 3D 법선 벡터(Normal) 계산 (볼록한 입체감의 핵심)
-                vec3 normal = normalize(vec3((st_cor - m_cor) / radius, h * 2.5));
+                // 변형된 물방울 형태에 맞는 3D 입체 법선 계산
+                vec3 normal = normalize(vec3(to_pixel / finalRadius, h * 2.0));
                 
-                // 애플 특유의 정교한 듀얼 화이트 하이라이트 (광원 2개)
-                vec3 light1 = normalize(vec3(0.3, 0.8, 1.0));
-                vec3 light2 = normalize(vec3(-0.4, 0.5, 0.8));
+                // Apple 스타일 고광택 듀얼 하이라이트
+                vec3 light1 = normalize(vec3(0.4, 0.8, 1.0));
+                vec3 light2 = normalize(vec3(-0.5, 0.4, 0.7));
                 
-                float spec1 = pow(max(dot(normal, light1), 0.0), 90.0) * 1.2; // 날카로운 하이라이트
-                float spec2 = pow(max(dot(normal, light2), 0.0), 30.0) * 0.3; // 부드러운 반사광
+                float spec1 = pow(max(dot(normal, light1), 0.0), 80.0) * 1.3;
+                float spec2 = pow(max(dot(normal, light2), 0.0), 25.0) * 0.4;
+                float rim = pow(1.0 - h, 3.5) * 0.4;
                 
-                // 가장자리 리플렉션 (Rim Light)
-                float rim = pow(1.0 - h, 3.0) * 0.35;
+                // 내부 굴절 느낌을 위한 미세한 광도 변화
+                float innerGlow = (1.0 - h) * 0.05;
                 
-                // 중앙은 완벽히 투명하여 배경이 보이고, 표면에 유리 질감만 얹어짐
-                float glassEffect = spec1 + spec2 + rim;
-                color = vec4(1.0, 1.0, 1.0, glassEffect);
-            } 
-            // 물방울 바로 밑에 맺히는 아주 미세한 내부 그림자 (입체감 극대화)
-            else if (dist < radius + 0.015) {
-                float shadowRatio = (dist - radius) / 0.015;
-                float shadowAlpha = (1.0 - shadowRatio) * 0.07;
+                color = vec4(1.0, 1.0, 1.0, spec1 + spec2 + rim + innerGlow);
+            }
+            // 부드러운 유기적 테두리 음영
+            else if (dist < finalRadius + 0.015) {
+                float shadowRatio = (dist - finalRadius) / 0.015;
+                float shadowAlpha = (1.0 - shadowRatio) * 0.08;
                 color = vec4(0.0, 0.0, 0.0, shadowAlpha);
             }
             
@@ -241,6 +275,17 @@ components.html("""
     
     function animate() {
       requestAnimationFrame(animate);
+      
+      // 스프링-댐퍼 물리 연산 (마우스 추적 관성 구현)
+      const acceleration = new THREE.Vector2();
+      acceleration.subVectors(targetMouse, currentPos).multiplyScalar(stiffness);
+      velocity.add(acceleration).multiplyScalar(damping);
+      currentPos.add(velocity);
+      
+      // 셰이더로 물리 값 실시간 전송
+      material.uniforms.u_mouse.value.copy(currentPos);
+      material.uniforms.u_velocity.value.copy(velocity);
+      
       renderer.render(scene, camera);
     }
     animate();
