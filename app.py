@@ -87,7 +87,7 @@ for key, default in [
         st.session_state[key] = default
 
 # ------------------------------------------------------------------
-# 마우스 반응형 리퀴드 글라스 캔버스 효과 (True 3D WebGL Liquid Glass Effect)
+# 마우스 반응형 리퀴드 글라스 캔버스 효과 (True 3D Shader Glass Droplet)
 # ------------------------------------------------------------------
 components.html("""
 <script>
@@ -96,7 +96,7 @@ components.html("""
   const win = window.parent;
   
   // Clean up any old canvas elements if they exist
-  ['liquidCanvas', 'liquidGlassCanvas', 'cfa-spotlight'].forEach(id => {
+  ['liquidCanvas', 'liquidGlassCanvas', 'liquidGlassCanvas3D', 'cfa-spotlight'].forEach(id => {
     const el = doc.getElementById(id);
     if (el) {
       el.remove();
@@ -104,7 +104,7 @@ components.html("""
   });
   
   // Prevent duplicate Three.js initializations on Streamlit reruns
-  if (win.cfa3DCanvasInitialized) {
+  if (win.cfaShaderCanvasInitialized) {
     return;
   }
   
@@ -133,160 +133,122 @@ components.html("""
   }
   
   loadThree(() => {
-    if (win.cfa3DCanvasInitialized) {
+    if (win.cfaShaderCanvasInitialized) {
       return;
     }
-    win.cfa3DCanvasInitialized = true;
+    win.cfaShaderCanvasInitialized = true;
     
-    let canvas = doc.getElementById('liquidGlassCanvas3D');
+    let canvas = doc.getElementById('liquid-glass-canvas');
     if (!canvas) {
       canvas = doc.createElement('canvas');
-      canvas.id = 'liquidGlassCanvas3D';
+      canvas.id = 'liquid-glass-canvas';
       canvas.style.position = 'fixed';
       canvas.style.top = '0';
       canvas.style.left = '0';
       canvas.style.width = '100vw';
       canvas.style.height = '100vh';
       canvas.style.pointerEvents = 'none';
-      canvas.style.zIndex = '-9999';
+      canvas.style.zIndex = '99999';
       canvas.style.display = 'block';
       doc.body.appendChild(canvas);
     }
     
     const THREE = win.THREE;
     
-    // 1. 3D Scene and Camera setup
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, win.innerWidth / win.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
     
     renderer.setSize(win.innerWidth, win.innerHeight);
     renderer.setPixelRatio(Math.min(win.devicePixelRatio, 2));
-    renderer.setClearColor(0xffffff, 1); // Set background completely white
     
-    // 2. Lighting Setup (Specular highlights + caustics simulation)
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
-    scene.add(ambientLight);
+    const mouse = new THREE.Vector2(-2.0, -2.0);
+    const targetMouse = new THREE.Vector2(-2.0, -2.0);
     
-    const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
-    dirLight.position.set(5, 10, 7);
-    scene.add(dirLight);
-    
-    // Color point lights for interior caustics refraction
-    const cyanLight = new THREE.PointLight(0x00bfff, 3, 30);
-    const pinkLight = new THREE.PointLight(0xff007f, 3, 30);
-    scene.add(cyanLight, pinkLight);
-    
-    // 3. Apple-style Physical Glass Material
-    const glassMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0xffffff,
-      transparent: true,
-      opacity: 0.4,
-      roughness: 0.01,
-      metalness: 0.05,
-      transmission: 0.98,
-      ior: 1.45,
-      thickness: 2.5,
-      specularIntensity: 2.0,
-      clearcoat: 1.0,
-      clearcoatRoughness: 0.02
-    });
-    
-    // 4. 3D Droplet Particles
-    const droplets = [];
-    const count = 25;
-    const geometry = new THREE.SphereGeometry(1, 64, 64);
-    
-    for (let i = 0; i < count; i++) {
-      const mesh = new THREE.Mesh(geometry, glassMaterial);
-      
-      mesh.position.set(
-        (Math.random() - 0.5) * 16,
-        (Math.random() - 0.5) * 10 - 2,
-        (Math.random() - 0.5) * 4
-      );
-      
-      const scale = Math.random() * 0.7 + 0.3;
-      mesh.scale.set(scale, scale, scale);
-      
-      mesh.userData = {
-        speedY: Math.random() * 0.015 + 0.008,
-        speedX: (Math.random() - 0.5) * 0.005,
-        originalScale: scale,
-        wobbleSpeed: Math.random() * 3 + 2,
-        seed: Math.random() * 100
-      };
-      
-      scene.add(mesh);
-      droplets.push(mesh);
-    }
-    
-    camera.position.z = 7;
-    
-    // 5. Mouse Interaction coordinates
-    const mouse = { x: 0, y: 0, targetX: 0, targetY: 0 };
     doc.addEventListener('mousemove', (e) => {
-      mouse.targetX = (e.clientX / win.innerWidth) * 2 - 1;
-      mouse.targetY = -(e.clientY / win.innerHeight) * 2 + 1;
+      targetMouse.x = (e.clientX / win.innerWidth) * 2 - 1;
+      targetMouse.y = -(e.clientY / win.innerHeight) * 2 + 1;
     });
     
-    // 6. Animation Loop
-    const clock = new THREE.Clock();
+    const geometry = new THREE.PlaneGeometry(2, 2);
+    const material = new THREE.ShaderMaterial({
+      transparent: true,
+      uniforms: {
+        u_mouse: { value: mouse },
+        u_resolution: { value: new THREE.Vector2(win.innerWidth, win.innerHeight) }
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            gl_Position = vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec2 u_mouse;
+        uniform vec2 u_resolution;
+        varying vec2 vUv;
+        void main() {
+            vec2 st = gl_FragCoord.xy / u_resolution;
+            vec2 m = u_mouse * 0.5 + 0.5;
+            
+            float aspect = u_resolution.x / u_resolution.y;
+            vec2 st_cor = vec2(st.x * aspect, st.y);
+            vec2 m_cor = vec2(m.x * aspect, m.y);
+            
+            float dist = distance(st_cor, m_cor);
+            vec4 color = vec4(0.0);
+            
+            float radius = 0.12; 
+            
+            if (dist < radius) {
+                float r = dist / radius;
+                float h = sqrt(1.0 - r * r); 
+                vec3 normal = normalize(vec3((st_cor - m_cor) / radius, h * 1.5));
+                
+                // Apple-style light reflection (highlights)
+                vec3 light1 = normalize(vec3(0.5, 0.7, 1.0));
+                vec3 light2 = normalize(vec3(-0.3, -0.2, 0.5));
+                
+                float spec1 = pow(max(dot(normal, light1), 0.0), 60.0);
+                float spec2 = pow(max(dot(normal, light2), 0.0), 20.0);
+                float rim = pow(1.0 - h, 4.0);
+                
+                // Transparent glass 3D thickness refraction
+                float glassReflection = spec1 * 0.8 + spec2 * 0.15 + rim * 0.25;
+                float innerGlow = (1.0 - h) * 0.1;
+                
+                color = vec4(1.0, 1.0, 1.0, glassReflection + innerGlow);
+            } 
+            // Drop shadow shading around the bubble (boosts 3D dome illusion)
+            else if (dist < radius + 0.03) {
+                float shadowRatio = (dist - radius) / 0.03;
+                float shadowAlpha = (1.0 - shadowRatio) * 0.08;
+                color = vec4(0.0, 0.0, 0.0, shadowAlpha);
+            }
+            
+            gl_FragColor = color;
+        }
+      `
+    });
+    
+    const mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh);
     
     function animate() {
       requestAnimationFrame(animate);
-      const time = clock.getElapsedTime();
       
-      // Easing for mouse target tracking
-      mouse.x += (mouse.targetX - mouse.x) * 0.1;
-      mouse.y += (mouse.targetY - mouse.y) * 0.1;
-      
-      // Move lights based on mouse position to shift caustics shading
-      cyanLight.position.set(mouse.x * 8, mouse.y * 5, 2);
-      pinkLight.position.set(-mouse.x * 8, -mouse.y * 5, 1);
-      
-      droplets.forEach(mesh => {
-        const data = mesh.userData;
-        
-        // Anti-gravity float
-        mesh.position.y += data.speedY;
-        mesh.position.x += data.speedX;
-        
-        // Surface tension wobble distortion
-        const wobble = Math.sin(time * data.wobbleSpeed + data.seed) * 0.06;
-        mesh.scale.x = data.originalScale + wobble;
-        mesh.scale.y = data.originalScale - wobble;
-        mesh.scale.z = data.originalScale + (wobble * 0.5);
-        
-        // Mouse 3D attraction
-        const mouseX3D = mouse.x * 8;
-        const mouseY3D = mouse.y * 5;
-        const dx = mouseX3D - mesh.position.x;
-        const dy = mouseY3D - mesh.position.y;
-        const dist = Math.hypot(dx, dy);
-        
-        if (dist < 3.5) {
-          mesh.position.x += dx * 0.015;
-          mesh.position.y += dy * 0.015;
-        }
-        
-        // Loop recycle
-        if (mesh.position.y > 6) {
-          mesh.position.y = -6;
-          mesh.position.x = (Math.random() - 0.5) * 16;
-        }
-      });
+      // Easing: smooth drag animation
+      mouse.x += (targetMouse.x - mouse.x) * 0.08;
+      mouse.y += (targetMouse.y - mouse.y) * 0.08;
       
       renderer.render(scene, camera);
     }
-    
     animate();
     
-    // Resize Handler
     win.addEventListener('resize', () => {
-      camera.aspect = win.innerWidth / win.innerHeight;
-      camera.updateProjectionMatrix();
       renderer.setSize(win.innerWidth, win.innerHeight);
+      material.uniforms.u_resolution.value.set(win.innerWidth, win.innerHeight);
     });
   });
 })();
@@ -300,7 +262,7 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif; }
-.stApp { background: transparent !important; color: #0f172a; }
+.stApp { background: #ffffff; color: #0f172a; }
 iframe { border: none !important; background: transparent !important; }
 
 /* 컬럼 및 컨테이너 글라스모피즘 스타일링 (빈 박스 제거 기법) */
