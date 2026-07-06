@@ -261,10 +261,8 @@ div[data-testid="column"]:has(.cfa-tile-marker) .stVerticalBlock {
     height: 100% !important;
     width: 100% !important;
 }
-div[data-testid="column"]:has(.cfa-tile-marker) [data-testid="stElementContainer"]:has(.stButton),
-div[data-testid="column"]:has(.cfa-tile-marker) [data-testid="element-container"]:has(.stButton),
-div[data-testid="column"]:has(.cfa-tile-marker) .stElementContainer:has(.stButton),
-div[data-testid="column"]:has(.cfa-tile-marker) .element-container:has(.stButton) {
+/* key-based direct target for overlaying buttons safely across all Streamlit versions */
+div[class*="st-key-btn_"] {
     position: absolute !important;
     inset: 0 !important;
     z-index: 99999 !important;
@@ -273,13 +271,8 @@ div[data-testid="column"]:has(.cfa-tile-marker) .element-container:has(.stButton
     height: 100% !important;
     width: 100% !important;
 }
-div[data-testid="column"]:has(.cfa-tile-marker) .stButton {
-    position: absolute !important;
-    inset: 0 !important;
-    height: 100% !important;
-    width: 100% !important;
-}
-div[data-testid="column"]:has(.cfa-tile-marker) .stButton > button {
+div[class*="st-key-btn_"] .stButton,
+div[class*="st-key-btn_"] button {
     position: absolute !important;
     inset: 0 !important;
     width: 100% !important;
