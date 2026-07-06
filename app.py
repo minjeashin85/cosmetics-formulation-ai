@@ -125,6 +125,7 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif; }
 .stApp { background: #080415; color: #f8fafc; }
+iframe { border: none !important; background: transparent !important; }
 
 /* 배경 장식 애니메이션 블롭 - Deep Space Anti-Gravity Chamber */
 .cfa-blob { position: fixed; border-radius: 50%; filter: blur(140px); opacity: 0.28; z-index: -1; pointer-events:none; }
@@ -329,6 +330,21 @@ div[data-testid="stMarkdownContainer"] h1, div[data-testid="stMarkdownContainer"
 .report-card { background: rgba(13,8,30,0.5); border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); padding: 20px; line-height: 1.6; color:#cbd5e1; }
 .report-card h4 { font-family:'Space Grotesk',sans-serif; color: #ffffff; margin-top: 0; }
 </style>
+""", unsafe_allow_html=True)
+
+# Parent window event listener for cross-origin postMessage communication
+st.markdown("""
+<script>
+if (!window.cfaFtypeListenerAdded) {
+    window.cfaFtypeListenerAdded = true;
+    window.addEventListener("message", function(e) {
+        if (e.data && e.data.type === "select_ftype") {
+            const path = window.location.origin + window.location.pathname;
+            window.location.href = path + "?ftype=" + e.data.ftype;
+        }
+    });
+}
+</script>
 """, unsafe_allow_html=True)
 
 # 백그라운드 버블
@@ -1214,8 +1230,7 @@ elif st.session_state.step == 1:
       
       <script>
         function selectType(ftype) {{
-          const parentUrl = window.parent.location.origin + window.parent.location.pathname;
-          window.parent.location.href = parentUrl + "?ftype=" + ftype;
+          window.parent.postMessage({ type: 'select_ftype', ftype: ftype }, '*');
         }}
       </script>
     </head>
