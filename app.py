@@ -217,12 +217,13 @@ html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif; }
     color:#fff; transform: translateY(-4px) scale(1.05);
     box-shadow: 0 16px 36px rgba(217,70,239,0.35), inset 0 1px 1px rgba(255,255,255,0.3);
 }
-.cfa-type-grid div[data-testid="column"] .stButton {
-    position: absolute; inset: 0; z-index: 5; margin: 0 !important; height: 100%;
+.cfa-type-grid div[data-testid="column"] .element-container:has(.stButton) {
+    position: absolute; inset: 0; z-index: 5; margin: 0 !important; height: 100%; width: 100%;
 }
-.cfa-type-grid div[data-testid="column"] .stButton button {
-    width: 100%; height: 100%; opacity: 0 !important; cursor: pointer; margin:0; padding:0; border:none !important;
-    background: transparent !important; box-shadow:none !important; border-radius: 24px;
+.cfa-type-grid div[data-testid="column"] .stButton,
+.cfa-type-grid div[data-testid="column"] .stButton > button {
+    width: 100% !important; height: 100% !important; opacity: 0 !important; cursor: pointer; margin: 0 !important; padding: 0 !important; border: none !important;
+    background: transparent !important; box-shadow: none !important; border-radius: 24px;
 }
 
 /* SVG 아이콘 내부 부품 호버 애니메이션 */
