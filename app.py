@@ -39,11 +39,11 @@ st.set_page_config(page_title="Cosmetics Formulation AI", page_icon="🧪", layo
 # ------------------------------------------------------------------
 if "api_key" not in st.session_state:
     # 1. Environment variable
-    env_key = os.environ.get("GEMINI_API_KEY", "")
+    env_key = os.environ.get("GEMINI_API_KEY", "").strip().strip('\"\'')
     # 2. Streamlit secrets
     secrets_key = ""
     try:
-        secrets_key = st.secrets.get("GEMINI_API_KEY", "")
+        secrets_key = st.secrets.get("GEMINI_API_KEY", "").strip().strip('\"\'')
     except Exception:
         pass
     
@@ -248,13 +248,49 @@ div[data-testid="column"]:has(.cfa-tile-marker):hover .cfa-name-pill {
     color:#fff !important; transform: translateY(-4px) scale(1.05) !important;
     box-shadow: 0 16px 36px rgba(217,70,239,0.35), inset 0 1px 1px rgba(255,255,255,0.3) !important;
 }
-div[data-testid="column"]:has(.cfa-tile-marker) .liquid-glass.cfa-tile {
-    pointer-events: auto !important;
+div[data-testid="column"]:has(.cfa-tile-marker) {
+    position: relative !important;
 }
-.cfa-tile-link {
-    text-decoration: none !important;
-    color: inherit !important;
-    display: block !important;
+div[data-testid="column"]:has(.cfa-tile-marker) .liquid-glass.cfa-tile {
+    pointer-events: none !important;
+}
+div[data-testid="column"]:has(.cfa-tile-marker) > div,
+div[data-testid="column"]:has(.cfa-tile-marker) [data-testid="stVerticalBlock"],
+div[data-testid="column"]:has(.cfa-tile-marker) .stVerticalBlock {
+    position: relative !important;
+    height: 100% !important;
+    width: 100% !important;
+}
+div[data-testid="column"]:has(.cfa-tile-marker) [data-testid="element-container"]:has(.stButton),
+div[data-testid="column"]:has(.cfa-tile-marker) .element-container:has(.stButton) {
+    position: absolute !important;
+    inset: 0 !important;
+    z-index: 99999 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: 100% !important;
+    width: 100% !important;
+}
+div[data-testid="column"]:has(.cfa-tile-marker) .stButton {
+    position: absolute !important;
+    inset: 0 !important;
+    height: 100% !important;
+    width: 100% !important;
+}
+div[data-testid="column"]:has(.cfa-tile-marker) .stButton > button {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    opacity: 0 !important;
+    cursor: pointer !important;
+    pointer-events: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border-radius: 24px !important;
 }
 
 /* SVG 아이콘 내부 부품 호버 애니메이션 */
@@ -453,63 +489,32 @@ FORMULATION_TYPES = [
 
 PHASE_PALETTE = ["#2563EB", "#6366F1", "#0EA5E9", "#818CF8", "#38BDF8", "#93C5FD"]
 
-# Helper functions for query params compatibility
-def get_query_param(name):
-    val = None
-    try:
-        if hasattr(st, "query_params"):
-            val = st.query_params.get(name)
-    except Exception:
-        pass
-    if val is None:
-        try:
-            params = st.experimental_get_query_params()
-            if name in params:
-                val = params[name][0]
-        except Exception:
-            pass
-    
-    if isinstance(val, list):
-        if len(val) > 0:
-            val = val[0]
-        else:
-            val = None
-            
-    if val is not None:
-        return str(val).strip()
-    return None
 
-def clear_query_params():
-    for key in ["ftype"]:
-        try:
-            if hasattr(st, "query_params") and key in st.query_params:
-                del st.query_params[key]
-        except Exception:
-            pass
-    try:
-        if hasattr(st, "query_params"):
-            st.query_params.clear()
-            return
-    except Exception:
-        pass
-    try:
-        st.experimental_set_query_params()
-    except Exception:
-        pass
-
-# Check if formulation type is chosen via query parameter link
-selected_ftype_id = get_query_param("ftype")
-if selected_ftype_id:
-    for t in FORMULATION_TYPES:
-        if t["id"] == selected_ftype_id:
-            st.session_state.ftype = t
-            st.session_state.step = 2
-            clear_query_params()
-            st.rerun()
 
 # ------------------------------------------------------------------
 # 핵심 AI 유틸 함수
 # ------------------------------------------------------------------
+def validate_api_key(api_key: str, model_name: str = "gemini-2.5-flash") -> tuple[bool, str]:
+    """Gemini API 키의 유효성을 검사합니다."""
+    if not api_key:
+        return False, "API 키가 비어 있습니다."
+    try:
+        client = genai.Client(api_key=api_key)
+        client.models.generate_content(
+            model=model_name,
+            contents="Hello",
+            config=types.GenerateContentConfig(max_output_tokens=1)
+        )
+        return True, ""
+    except Exception as e:
+        err_msg = str(e)
+        if "API_KEY_INVALID" in err_msg or "API key not valid" in err_msg or "400" in err_msg:
+            return False, "올바르지 않은 API 키입니다. Google AI Studio에서 발급받은 키인지 확인해 주세요."
+        elif "quota" in err_msg.lower() or "limit" in err_msg.lower() or "429" in err_msg:
+            return False, "API 호출 할당량이 초과되었습니다."
+        else:
+            return False, f"API 키 검증 중 오류가 발생했습니다: {err_msg}"
+
 def get_client():
     return genai.Client(api_key=st.session_state.api_key)
 
@@ -855,7 +860,7 @@ def zoom_dialog(img, caption):
 # ------------------------------------------------------------------
 # 헤더 및 레이아웃
 # ------------------------------------------------------------------
-hcol1, hcol2 = st.columns([5, 1.2])
+hcol1, hcol2 = st.columns([4, 2])
 with hcol1:
     st.markdown('''
     <div class="cfa-header-row">
@@ -870,20 +875,38 @@ with hcol1:
     ''', unsafe_allow_html=True)
 with hcol2:
     if st.session_state.step >= 1:
-        if st.button("🏠 처음으로 (처방 초기화)", use_container_width=True, key="header_reset_button"):
-            st.session_state.step = 1
-            st.session_state.ftype = None
-            st.session_state.label_ingredients = None
-            st.session_state.label_original = None
-            st.session_state.label_crop = None
-            st.session_state.raw_formulation = None
-            st.session_state.formulation = None
-            
-            # Deleting widget state keys
-            for k in ["ingredients_text_editor", "db_editor", "label_file_uploader"]:
-                if k in st.session_state:
-                    del st.session_state[k]
-            st.rerun()
+        btn_col1, btn_col2 = st.columns(2)
+        with btn_col1:
+            if st.button("🏠 처음으로", use_container_width=True, key="header_reset_button"):
+                st.session_state.step = 1
+                st.session_state.ftype = None
+                st.session_state.label_ingredients = None
+                st.session_state.label_original = None
+                st.session_state.label_crop = None
+                st.session_state.raw_formulation = None
+                st.session_state.formulation = None
+                
+                # Deleting widget state keys
+                for k in ["ingredients_text_editor", "db_editor", "label_file_uploader"]:
+                    if k in st.session_state:
+                        del st.session_state[k]
+                st.rerun()
+        with btn_col2:
+            if st.button("🔑 Key 변경", use_container_width=True, key="header_change_api_button"):
+                st.session_state.api_key = ""
+                st.session_state.step = 0
+                st.session_state.ftype = None
+                st.session_state.label_ingredients = None
+                st.session_state.label_original = None
+                st.session_state.label_crop = None
+                st.session_state.raw_formulation = None
+                st.session_state.formulation = None
+                
+                # Deleting widget state keys
+                for k in ["ingredients_text_editor", "db_editor", "label_file_uploader"]:
+                    if k in st.session_state:
+                        del st.session_state[k]
+                st.rerun()
 
 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -924,8 +947,18 @@ if st.session_state.step >= 1:
                 help="설정된 API 키입니다. 다른 키로 변경하려면 입력해 주세요."
             )
             if settings_key != st.session_state.api_key:
-                st.session_state.api_key = settings_key.strip()
-                st.rerun()
+                cleaned_settings_key = settings_key.strip().strip('\"\'')
+                if cleaned_settings_key:
+                    with st.spinner("Gemini API 키 검증 중..."):
+                        is_valid, err_msg = validate_api_key(cleaned_settings_key, st.session_state.model_name)
+                    if is_valid:
+                        st.session_state.api_key = cleaned_settings_key
+                        st.success("API 키가 변경되었습니다!")
+                        st.rerun()
+                    else:
+                        st.error(f"❌ API 키 검증 실패: {err_msg}")
+                else:
+                    st.error("API 키를 입력해 주세요.")
         with col_api2:
             model_options = ["gemini-2.5-flash", "gemini-2.5-pro"]
             model_index = 0
@@ -996,16 +1029,30 @@ if st.session_state.step == 0:
         st.markdown("### 🔑 Gemini API 키 설정")
         st.caption("이 웹앱은 배합 설계 및 이미지 분석에 Google Gemini API를 사용합니다.")
         st.markdown("[👉 Google AI Studio에서 무료 API 키 발급받기](https://aistudio.google.com/apikey)")
+        
+        # 이전 실행 시 오류가 발생하여 되돌아온 경우 메시지 표시
+        if "api_key_error_msg" in st.session_state and st.session_state.api_key_error_msg:
+            st.error(st.session_state.api_key_error_msg)
+            # 한 번 표시한 후 세션 상태에서 삭제하여 중복 방지
+            del st.session_state.api_key_error_msg
+            
         key_input = st.text_input("Gemini API Key", type="password", placeholder="AIzaSy... 로 시작하는 키를 입력해 주세요")
         model_input = st.text_input("사용할 Gemini 모델명", value=st.session_state.model_name)
         
         st.caption("※ 로컬 환경 변수 `GEMINI_API_KEY`를 설정하거나 Streamlit Secrets를 구성하면 이 화면을 건너뛸 수 있습니다.")
         if st.button("시작하기 →", use_container_width=True, type="primary"):
-            if key_input.strip():
-                st.session_state.api_key = key_input.strip()
-                st.session_state.model_name = model_input.strip() or "gemini-2.5-flash"
-                st.session_state.step = 1
-                st.rerun()
+            cleaned_key = key_input.strip().strip('\"\'')
+            if cleaned_key:
+                selected_model = model_input.strip() or "gemini-2.5-flash"
+                with st.spinner("Gemini API 키 검증 중..."):
+                    is_valid, err_msg = validate_api_key(cleaned_key, selected_model)
+                if is_valid:
+                    st.session_state.api_key = cleaned_key
+                    st.session_state.model_name = selected_model
+                    st.session_state.step = 1
+                    st.rerun()
+                else:
+                    st.error(f"❌ API 키 검증 실패: {err_msg}")
             else:
                 st.error("올바른 API 키를 입력해 주세요")
 
@@ -1020,13 +1067,15 @@ elif st.session_state.step == 1:
     for i, t in enumerate(FORMULATION_TYPES):
         with cols[i % 3]:
             st.markdown(f'''
-            <a href="?ftype={t["id"]}" target="_self" class="cfa-tile-link">
-              <div class="liquid-glass cfa-tile cfa-tile-marker">
-                <div class="cfa-icon-wrap">{t["svg"]}</div>
-                <div class="cfa-name-pill">{t["label"]}<span class="cfa-liquid-drop2"></span></div>
-              </div>
-            </a>
+            <div class="liquid-glass cfa-tile cfa-tile-marker">
+              <div class="cfa-icon-wrap">{t["svg"]}</div>
+              <div class="cfa-name-pill">{t["label"]}<span class="cfa-liquid-drop2"></span></div>
+            </div>
             ''', unsafe_allow_html=True)
+            if st.button(t["label"], key=f"btn_{t['id']}", use_container_width=True):
+                st.session_state.ftype = t
+                st.session_state.step = 2
+                st.rerun()
 
 # ------------------------------------------------------------------
 # STEP 2: 라벨 크롭 및 AI 처방 설계
@@ -1080,9 +1129,16 @@ elif st.session_state.step == 2:
                         st.rerun()
                     except Exception as e:
                         import traceback
-                        st.error(f"성분 추출에 실패했습니다: {e}")
-                        with st.expander("🛠️ 상세 에러 로그 (디버깅용)"):
-                            st.code(traceback.format_exc())
+                        err_str = str(e)
+                        if "API_KEY_INVALID" in err_str or "API key not valid" in err_str or "400" in err_str:
+                            st.session_state.api_key = ""
+                            st.session_state.step = 0
+                            st.session_state.api_key_error_msg = "❌ 입력된 Gemini API 키가 올바르지 않거나 만료되었습니다. API 키를 재설정해 주세요."
+                            st.rerun()
+                        else:
+                            st.error(f"성분 추출에 실패했습니다: {e}")
+                            with st.expander("🛠️ 상세 에러 로그 (디버깅용)"):
+                                st.code(traceback.format_exc())
         else:
             st.write("업로드된 라벨이 없습니다. 원료 DB에 있는 성분들을 활용하여 **인공지능의 신규 배합 설계**를 바로 시작합니다.")
             
@@ -1155,10 +1211,17 @@ elif st.session_state.step == 2:
             except Exception as e:
                 placeholder.empty()
                 import traceback
-                st.error(f"처방 설계에 실패했습니다: {e}")
-                with st.expander("🛠️ 상세 에러 로그 (디버깅용)"):
-                    st.code(traceback.format_exc())
-                st.caption("Gemini API 키 상태와 쿼리 한도를 다시 한번 점검해 주세요.")
+                err_str = str(e)
+                if "API_KEY_INVALID" in err_str or "API key not valid" in err_str or "400" in err_str:
+                    st.session_state.api_key = ""
+                    st.session_state.step = 0
+                    st.session_state.api_key_error_msg = "❌ 입력된 Gemini API 키가 올바르지 않거나 만료되었습니다. API 키를 재설정해 주세요."
+                    st.rerun()
+                else:
+                    st.error(f"처방 설계에 실패했습니다: {e}")
+                    with st.expander("🛠️ 상세 에러 로그 (디버깅용)"):
+                        st.code(traceback.format_exc())
+                    st.caption("Gemini API 키 상태와 쿼리 한도를 다시 한번 점검해 주세요.")
 
 # ------------------------------------------------------------------
 # STEP 3: 설계 결과 대시보드
@@ -1292,7 +1355,14 @@ elif st.session_state.step == 3:
                 st.rerun()
             except Exception as e:
                 placeholder.empty()
-                st.error(f"피드백 반영 수정에 실패했습니다: {e}")
+                err_str = str(e)
+                if "API_KEY_INVALID" in err_str or "API key not valid" in err_str or "400" in err_str:
+                    st.session_state.api_key = ""
+                    st.session_state.step = 0
+                    st.session_state.api_key_error_msg = "❌ 입력된 Gemini API 키가 올바르지 않거나 만료되었습니다. API 키를 재설정해 주세요."
+                    st.rerun()
+                else:
+                    st.error(f"피드백 반영 수정에 실패했습니다: {e}")
     st.markdown('</div>', unsafe_allow_html=True)
 
     # ------------------------------------------------------------------
