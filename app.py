@@ -162,12 +162,12 @@ html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif; }
 .liquid-glass::before { content: ""; position: absolute; top:0; left:10%; right:10%; height:1.5px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); }
 
 /* 제형 선택 그리드 및 호버 효과 */
-.cfa-type-grid div[data-testid="column"] { position: relative; }
+div[data-testid="column"]:has(.cfa-tile-marker) { position: relative; }
 .cfa-tile { padding: 24px 8px 16px 8px; text-align:center; margin-bottom: 14px; display:flex; flex-direction:column; align-items:center; }
 .cfa-icon-wrap { width: 140px; height: 140px; margin: 0 auto; transition: transform .5s cubic-bezier(.175,.885,.32,1.275), filter .5s; }
-.cfa-type-grid div[data-testid="column"]:hover .cfa-icon-wrap {
-    transform: scale(1.18) rotate(-4deg);
-    filter: drop-shadow(0 0 25px rgba(6,182,212,0.45));
+div[data-testid="column"]:has(.cfa-tile-marker):hover .cfa-icon-wrap {
+    transform: scale(1.18) rotate(-4deg) !important;
+    filter: drop-shadow(0 0 25px rgba(6,182,212,0.45)) !important;
 }
 .cfa-name-pill {
     position: relative; overflow: hidden;
@@ -211,21 +211,24 @@ html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif; }
     40%  { transform: translate(-50px,-20px) scale(1.05); opacity:0.65; }
     100% { transform: translate(0,0) scale(0.6); opacity:0.25; }
 }
-.cfa-type-grid div[data-testid="column"]:hover .cfa-name-pill {
-    background: linear-gradient(135deg, rgba(217,70,239,0.7), rgba(59,130,246,0.65));
-    border-color: rgba(255,255,255,0.4);
-    color:#fff; transform: translateY(-4px) scale(1.05);
-    box-shadow: 0 16px 36px rgba(217,70,239,0.35), inset 0 1px 1px rgba(255,255,255,0.3);
+div[data-testid="column"]:has(.cfa-tile-marker):hover .cfa-name-pill {
+    background: linear-gradient(135deg, rgba(217,70,239,0.7), rgba(59,130,246,0.65)) !important;
+    border-color: rgba(255,255,255,0.4) !important;
+    color:#fff !important; transform: translateY(-4px) scale(1.05) !important;
+    box-shadow: 0 16px 36px rgba(217,70,239,0.35), inset 0 1px 1px rgba(255,255,255,0.3) !important;
 }
 div[data-testid="column"]:has(.cfa-tile-marker) {
     position: relative !important;
 }
-div[data-testid="column"]:has(.cfa-tile-marker) div:has(> .stButton),
+div[data-testid="column"]:has(.cfa-tile-marker) > div,
+div[data-testid="column"]:has(.cfa-tile-marker) .stVerticalBlock {
+    position: relative !important;
+}
 div[data-testid="column"]:has(.cfa-tile-marker) [data-testid="element-container"]:has(.stButton),
 div[data-testid="column"]:has(.cfa-tile-marker) .element-container:has(.stButton) {
     position: absolute !important;
     inset: 0 !important;
-    z-index: 5 !important;
+    z-index: 99999 !important;
     margin: 0 !important;
     padding: 0 !important;
     height: 100% !important;
