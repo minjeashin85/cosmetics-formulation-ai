@@ -87,7 +87,7 @@ for key, default in [
         st.session_state[key] = default
 
 # ------------------------------------------------------------------
-# 마우스 반응형 리퀴드 글라스 캔버스 효과 (Apple Teardrop Glass)
+# 마우스 반응형 리퀴드 글라스 캔버스 효과 (Apple Liquid Magnifier)
 # ------------------------------------------------------------------
 components.html("""
 <script>
@@ -95,206 +95,139 @@ components.html("""
   const doc = window.parent.document;
   const win = window.parent;
   
-  // Clean up any old canvas elements if they exist
-  ['liquidCanvas', 'liquidGlassCanvas', 'liquid-glass-canvas', 'liquid-glass-canvas-v2', 'apple-liquid-lens', 'liquidGlassCanvas3D', 'cfa-spotlight'].forEach(id => {
+  // Clean up all old canvas elements and WebGL visualizers
+  ['liquidCanvas', 'liquidGlassCanvas', 'liquid-glass-canvas', 'liquid-glass-canvas-v2', 'apple-liquid-lens', 'apple-teardrop-glass', 'liquidGlassCanvas3D', 'cfa-spotlight'].forEach(id => {
     const el = doc.getElementById(id);
     if (el) {
       el.remove();
     }
   });
   
-  // Prevent duplicate Three.js initializations on Streamlit reruns
-  if (win.cfaAppleTeardropGlassInitialized) {
-    return;
+  // Prevent duplicate insertion of SVG filter, styles and lens div
+  let lens = doc.getElementById('apple-glass-lens');
+  if (lens) {
+    return; // Already initialized in parent DOM
   }
   
-  function loadThree(callback) {
-    if (win.THREE) {
-      callback();
-      return;
-    }
-    let script = doc.getElementById('threeJsScript');
-    if (!script) {
-      script = doc.createElement('script');
-      script.id = 'threeJsScript';
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
-      script.onload = () => {
-        callback();
-      };
-      doc.head.appendChild(script);
-    } else {
-      const checkInterval = setInterval(() => {
-        if (win.THREE) {
-          clearInterval(checkInterval);
-          callback();
-        }
-      }, 50);
-    }
-  }
+  // 1. Create SVG Filter container for true DOM distortion/refraction
+  const svgContainer = doc.createElement('div');
+  svgContainer.innerHTML = `
+    <svg id="apple-lens-svg" width="0" height="0" style="position: absolute; pointer-events: none;">
+      <defs>
+        <filter id="apple-liquid-magnifier" x="-50%" y="-50%" width="200%" height="200%">
+          <feImage id="svg-bump-map" result="bumpMap"/>
+          <feDisplacementMap in="SourceGraphic" in2="bumpMap" scale="45" xChannelSelector="R" yChannelSelector="G"/>
+        </filter>
+      </defs>
+    </svg>
+  `;
+  doc.body.appendChild(svgContainer.firstElementChild);
   
-  loadThree(() => {
-    if (win.cfaAppleTeardropGlassInitialized) {
-      return;
+  // 2. Create CSS styling tag for the magnifying liquid glass overlay
+  const styleEl = doc.createElement('style');
+  styleEl.id = 'apple-lens-style';
+  styleEl.textContent = `
+    #apple-glass-lens {
+        position: fixed;
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 999999;
+        left: -200px;
+        top: -200px;
+        transform: translate(-50%, -50%); 
+        backdrop-filter: url(#apple-liquid-magnifier);
+        -webkit-backdrop-filter: url(#apple-liquid-magnifier);
+        background: 
+            radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%),
+            radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0) 60%, rgba(255, 255, 255, 0.08) 100%);
+        box-shadow: 
+            inset 0 6px 12px rgba(255, 255, 255, 0.5),
+            inset 0 -6px 12px rgba(0, 0, 0, 0.08),
+            0 10px 24px rgba(0, 0, 0, 0.12);
+        will-change: left, top, transform;
     }
-    win.cfaAppleTeardropGlassInitialized = true;
-    
-    let canvas = doc.getElementById('apple-teardrop-glass');
-    if (!canvas) {
-      canvas = doc.createElement('canvas');
-      canvas.id = 'apple-teardrop-glass';
-      canvas.style.position = 'fixed';
-      canvas.style.top = '0';
-      canvas.style.left = '0';
-      canvas.style.width = '100vw';
-      canvas.style.height = '100vh';
-      canvas.style.pointerEvents = 'none';
-      canvas.style.zIndex = '99999';
-      canvas.style.display = 'block';
-      doc.body.appendChild(canvas);
-    }
-    
-    const THREE = win.THREE;
-    
-    const scene = new THREE.Scene();
-    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-    const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
-    
-    renderer.setSize(win.innerWidth, win.innerHeight);
-    renderer.setPixelRatio(Math.min(win.devicePixelRatio, 2));
-    
-    // 물리 기반 마우스 트래킹 변수 (유체 관성의 핵심)
-    const currentPos = new THREE.Vector2(-2.0, -2.0);
-    const targetMouse = new THREE.Vector2(-2.0, -2.0);
-    const velocity = new THREE.Vector2(0, 0);
-    
-    const stiffness = 0.12; // 스프링 탄성 (낮을수록 더 출렁임)
-    const damping = 0.78;   // 감쇠 저항 (물속 같은 부드러움 제공)
-    
-    doc.addEventListener('mousemove', (e) => {
-      targetMouse.x = (e.clientX / win.innerWidth) * 2 - 1;
-      targetMouse.y = -(e.clientY / win.innerHeight) * 2 + 1;
-    });
-    
-    const geometry = new THREE.PlaneGeometry(2, 2);
-    const material = new THREE.ShaderMaterial({
-      transparent: true,
-      uniforms: {
-        u_mouse: { value: currentPos },
-        u_velocity: { value: velocity },
-        u_resolution: { value: new THREE.Vector2(win.innerWidth, win.innerHeight) }
-      },
-      vertexShader: `
-        varying vec2 vUv;
-        void main() {
-            vUv = uv;
-            gl_Position = vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        uniform vec2 u_mouse;
-        uniform vec2 u_velocity;
-        uniform vec2 u_resolution;
-        varying vec2 vUv;
-        
-        void main() {
-            vec2 st = gl_FragCoord.xy / u_resolution;
-            vec2 m = u_mouse * 0.5 + 0.5;
-            
-            float aspect = u_resolution.x / u_resolution.y;
-            vec2 st_cor = vec2(st.x * aspect, st.y);
-            vec2 m_cor = vec2(m.x * aspect, m.y);
-            
-            // 물리 엔진에서 계산된 속도를 화면 비율에 맞춰 보정
-            vec2 v_cor = vec2(u_velocity.x * aspect, u_velocity.y) * 1.5;
-            float speed = length(v_cor);
-            
-            vec2 to_pixel = st_cor - m_cor;
-            float dist = length(to_pixel);
-            
-            // 기본 반지름 설정
-            float baseRadius = 0.07; 
-            float finalRadius = baseRadius;
-            
-            // [핵심] 이동 방향에 따른 실시간 물방울(Teardrop) 형상 변형 로직
-            if (speed > 0.001 && dist > 0.0) {
-                vec2 dir = normalize(v_cor);
-                vec2 normToPixel = normalize(to_pixel);
-                float dotProd = dot(normToPixel, dir); // 1.0이면 진행방향(앞), -1.0이면 꼬리방향(뒤)
-                
-                float stretchFactor = speed * 15.0; // 변형 강도
-                
-                if (dotProd < 0.0) {
-                    // 뒤쪽(꼬리): 속도가 빠를수록 진행 방향 반대로 길게 늘어남
-                    finalRadius += abs(dotProd) * stretchFactor * baseRadius * 1.8;
-                } else {
-                    // 앞쪽: 공기 저항을 받아 미세하게 납작해짐
-                    finalRadius -= dotProd * stretchFactor * baseRadius * 0.3;
-                }
-                
-                // 옆면: 부피 보존 법칙 시각화를 위해 날씬하게 수축
-                float sideDot = abs(dot(normToPixel, vec2(-dir.y, dir.x)));
-                finalRadius -= sideDot * stretchFactor * baseRadius * 0.5;
-            }
-            
-            vec4 color = vec4(0.0);
-            
-            if (dist < finalRadius) {
-                float r = dist / finalRadius;
-                float h = sqrt(1.0 - r * r); 
-                
-                // 변형된 물방울 형태에 맞는 3D 입체 법선 계산
-                vec3 normal = normalize(vec3(to_pixel / finalRadius, h * 2.0));
-                
-                // Apple 스타일 고광택 듀얼 하이라이트
-                vec3 light1 = normalize(vec3(0.4, 0.8, 1.0));
-                vec3 light2 = normalize(vec3(-0.5, 0.4, 0.7));
-                
-                float spec1 = pow(max(dot(normal, light1), 0.0), 80.0) * 1.3;
-                float spec2 = pow(max(dot(normal, light2), 0.0), 25.0) * 0.4;
-                float rim = pow(1.0 - h, 3.5) * 0.4;
-                
-                // 내부 굴절 느낌을 위한 미세한 광도 변화
-                float innerGlow = (1.0 - h) * 0.05;
-                
-                color = vec4(1.0, 1.0, 1.0, spec1 + spec2 + rim + innerGlow);
-            }
-            // 부드러운 유기적 테두리 음영
-            else if (dist < finalRadius + 0.015) {
-                float shadowRatio = (dist - finalRadius) / 0.015;
-                float shadowAlpha = (1.0 - shadowRatio) * 0.08;
-                color = vec4(0.0, 0.0, 0.0, shadowAlpha);
-            }
-            
-            gl_FragColor = color;
-        }
-      `
-    });
-    
-    const mesh = new THREE.Mesh(geometry, material);
-    scene.add(mesh);
-    
-    function animate() {
-      requestAnimationFrame(animate);
-      
-      // 스프링-댐퍼 물리 연산 (마우스 추적 관성 구현)
-      const acceleration = new THREE.Vector2();
-      acceleration.subVectors(targetMouse, currentPos).multiplyScalar(stiffness);
-      velocity.add(acceleration).multiplyScalar(damping);
-      currentPos.add(velocity);
-      
-      // 셰이더로 물리 값 실시간 전송
-      material.uniforms.u_mouse.value.copy(currentPos);
-      material.uniforms.u_velocity.value.copy(velocity);
-      
-      renderer.render(scene, camera);
-    }
-    animate();
-    
-    win.addEventListener('resize', () => {
-      renderer.setSize(win.innerWidth, win.innerHeight);
-      material.uniforms.u_resolution.value.set(win.innerWidth, win.innerHeight);
-    });
+  `;
+  doc.head.appendChild(styleEl);
+  
+  // 3. Create the physical glass lens element
+  lens = doc.createElement('div');
+  lens.id = 'apple-glass-lens';
+  doc.body.appendChild(lens);
+  
+  // 4. Generate high-fidelity mathematical refraction normal map
+  const size = 256;
+  const mapCanvas = doc.createElement('canvas');
+  mapCanvas.width = size;
+  mapCanvas.height = size;
+  const ctx = mapCanvas.getContext('2d');
+  const imgData = ctx.createImageData(size, size);
+
+  for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+          const nx = (x - size / 2) / (size / 2);
+          const ny = (y - size / 2) / (size / 2);
+          const r = Math.sqrt(nx * nx + ny * ny);
+          
+          let r_val = 128;
+          let g_val = 128;
+          
+          if (r < 1.0) {
+              // Convex spherical lens displacement function
+              const factor = (1.0 - r * r) * r * 0.6;
+              r_val = 128 - nx * factor * 127; // Red: X-axis displacement
+              g_val = 128 - ny * factor * 127; // Green: Y-axis displacement
+          }
+          
+          const idx = (y * size + x) * 4;
+          imgData.data[idx] = r_val;
+          imgData.data[idx + 1] = g_val;
+          imgData.data[idx + 2] = 0;
+          imgData.data[idx + 3] = 255;
+      }
+  }
+  ctx.putImageData(imgData, 0, 0);
+  doc.getElementById('svg-bump-map').setAttribute('href', mapCanvas.toDataURL());
+  
+  // 5. Run fluid spring deformation and position tracking loops
+  let currentX = win.innerWidth / 2;
+  let currentY = win.innerHeight / 2;
+  let targetX = currentX, targetY = currentY;
+  let lastX = currentX, lastY = currentY;
+
+  doc.addEventListener('mousemove', (e) => {
+      targetX = e.clientX;
+      targetY = e.clientY;
   });
+
+  function animateLens() {
+      // Fluid spring latency decay (0.18 factor)
+      currentX += (targetX - currentX) * 0.18;
+      currentY += (targetY - currentY) * 0.18;
+      
+      const vx = currentX - lastX;
+      const vy = currentY - lastY;
+      const speed = Math.sqrt(vx * vx + vy * vy);
+      const angle = Math.atan2(vy, vx);
+      
+      lastX = currentX;
+      lastY = currentY;
+      
+      lens.style.left = `${currentX}px`;
+      lens.style.top = `${currentY}px`;
+      
+      // Stretch in movement direction based on speed velocity
+      const stretch = Math.min(speed * 0.08, 0.35); 
+      lens.style.transform = `translate(-50%, -50%) rotate(${angle}rad) scale(${1 + stretch}, ${1 - stretch * 0.4})`;
+      
+      requestAnimationFrame(animateLens);
+  }
+  
+  if (!win.cfaAppleGlassLensInitialized) {
+    win.cfaAppleGlassLensInitialized = true;
+    animateLens();
+  }
 })();
 </script>
 """, height=0)
