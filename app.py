@@ -220,10 +220,19 @@ div[data-testid="column"]:has(.cfa-tile-marker):hover .cfa-name-pill {
 div[data-testid="column"]:has(.cfa-tile-marker) {
     position: relative !important;
 }
+/* 카드 자체는 마우스 클릭 이벤트를 통과시키도록 설정 */
+div[data-testid="column"]:has(.cfa-tile-marker) .liquid-glass.cfa-tile {
+    pointer-events: none !important;
+}
+/* stVerticalBlock 래퍼 좌표계 수립 */
 div[data-testid="column"]:has(.cfa-tile-marker) > div,
+div[data-testid="column"]:has(.cfa-tile-marker) [data-testid="stVerticalBlock"],
 div[data-testid="column"]:has(.cfa-tile-marker) .stVerticalBlock {
     position: relative !important;
+    height: 100% !important;
+    width: 100% !important;
 }
+/* 버튼을 가지고 있는 엘리먼트 컨테이너를 absolute로 카드 전체 크기로 확장 */
 div[data-testid="column"]:has(.cfa-tile-marker) [data-testid="element-container"]:has(.stButton),
 div[data-testid="column"]:has(.cfa-tile-marker) .element-container:has(.stButton) {
     position: absolute !important;
@@ -234,12 +243,21 @@ div[data-testid="column"]:has(.cfa-tile-marker) .element-container:has(.stButton
     height: 100% !important;
     width: 100% !important;
 }
-div[data-testid="column"]:has(.cfa-tile-marker) .stButton,
+/* 버튼 컴포넌트 자체를 absolute로 핏시키고 pointer-events 활성화 */
+div[data-testid="column"]:has(.cfa-tile-marker) .stButton {
+    position: absolute !important;
+    inset: 0 !important;
+    height: 100% !important;
+    width: 100% !important;
+}
 div[data-testid="column"]:has(.cfa-tile-marker) .stButton > button {
+    position: absolute !important;
+    inset: 0 !important;
     width: 100% !important;
     height: 100% !important;
     opacity: 0 !important;
     cursor: pointer !important;
+    pointer-events: auto !important;
     margin: 0 !important;
     padding: 0 !important;
     border: none !important;
