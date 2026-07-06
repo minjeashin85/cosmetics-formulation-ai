@@ -95,6 +95,21 @@ components.html("""
   const doc = window.parent.document;
   const win = window.parent;
   
+  // Check if we should hide the lens (results page active)
+  const hideLens = doc.getElementById('cfa-step3-active') !== null;
+  if (hideLens) {
+    if (win.cfaAppleGlassLensGlowInitialized) {
+      win.cfaCancelAppleGlassLens = true;
+    }
+    const oldLens = doc.getElementById('apple-glass-lens');
+    if (oldLens) { oldLens.remove(); }
+    const oldSvg = doc.getElementById('apple-lens-svg');
+    if (oldSvg) { oldSvg.remove(); }
+    const oldStyle = doc.getElementById('apple-lens-style');
+    if (oldStyle) { oldStyle.remove(); }
+    return;
+  }
+  
   // Clean up all old canvas elements and WebGL visualizers
   ['liquidCanvas', 'liquidGlassCanvas', 'liquid-glass-canvas', 'liquid-glass-canvas-v2', 'apple-liquid-lens', 'apple-teardrop-glass', 'liquidGlassCanvas3D', 'cfa-spotlight'].forEach(id => {
     const el = doc.getElementById(id);
@@ -535,8 +550,22 @@ div[class*="stColumn"]:has(.cfa-tile-marker):hover .cfa-shine-anim,
 .cfa-summary { padding: 22px 24px; text-align:left; }
 .cfa-summary .label { font-size:11px; letter-spacing:1.6px; text-transform:uppercase; color:rgba(255,255,255,0.5); font-weight:600; }
 .cfa-summary .value { font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:700; color:#ffffff; margin-top:6px; }
-.cfa-summary.accent { background: linear-gradient(160deg, rgba(255,0,160,0.12), rgba(110,18,58,0.04)); border-color: rgba(255,0,160,0.3); }
-.cfa-summary.accent .value { color:#ff00a0; }
+.cfa-summary.accent {
+    background: linear-gradient(135deg, #ffffff, #f472b6) !important;
+    border: 2.5px solid #ff00a0 !important;
+    box-shadow: 0 10px 30px rgba(255, 0, 160, 0.45) !important;
+}
+.cfa-summary.accent .value {
+    color: #070506 !important;
+    font-size: 34px !important;
+    font-weight: 800 !important;
+    text-shadow: none !important;
+}
+.cfa-summary.accent .label {
+    color: #6e123a !important;
+    font-weight: 700 !important;
+    text-shadow: none !important;
+}
 
 /* 처방 테이블 - Light Glass Design */
 .cfa-table-wrap { padding: 4px; overflow-x: auto; }
@@ -564,7 +593,42 @@ div[class*="stColumn"]:has(.cfa-tile-marker):hover .cfa-shine-anim,
 button[kind="primary"] { background: linear-gradient(135deg, #ff00a0, #6e123a)!important; border: 1px solid rgba(255,255,255,0.15)!important; color:#fff!important; box-shadow: 0 4px 15px rgba(255,0,160,0.25)!important; }
 button[kind="primary"]:hover { filter: brightness(1.05); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255,0,160,0.35)!important; }
 div[data-baseweb="input"], div[data-baseweb="base-input"] { background: rgba(0,0,0,0.35)!important; backdrop-filter: blur(12px); border-radius: 14px!important; border: 1px solid rgba(255,0,160,0.2)!important; color:#ffffff!important; }
-[data-testid="stFileUploaderDropzone"] { background: rgba(255,255,255,0.02)!important; backdrop-filter: blur(18px) saturate(180%); border-radius: 20px!important; border: 1px dashed rgba(255,255,255,0.15)!important; }
+[data-testid="stFileUploaderDropzone"] {
+    background: rgba(255, 255, 255, 0.08) !important;
+    backdrop-filter: blur(18px) saturate(180%);
+    border-radius: 20px !important;
+    border: 2px dashed #ff00a0 !important;
+}
+[data-testid="stFileUploaderDropzone"]:hover {
+    border-color: #ff55bb !important;
+    background: rgba(255, 255, 255, 0.12) !important;
+}
+[data-testid="stFileUploaderDropzone"] [data-testid="stMarkdownContainer"] p {
+    color: #ffffff !important;
+    font-weight: 600 !important;
+}
+[data-testid="stFileUploaderDropzone"] span {
+    color: #ffffff !important;
+}
+[data-testid="stFileUploaderDropzone"] svg {
+    fill: #ff00a0 !important;
+}
+[data-testid="stFileUploaderFile"] {
+    background-color: rgba(255, 0, 160, 0.15) !important;
+    border: 1.5px solid rgba(255, 0, 160, 0.5) !important;
+    border-radius: 12px !important;
+    padding: 8px 12px !important;
+    margin-top: 8px !important;
+}
+[data-testid="stFileUploaderFile"] [data-testid="stMarkdownContainer"] p,
+[data-testid="stFileUploaderFile"] span,
+[data-testid="stFileUploaderFile"] div {
+    color: #ffffff !important;
+    font-weight: 500 !important;
+}
+[data-testid="stFileUploaderFile"] button svg {
+    fill: #ffffff !important;
+}
 div[data-testid="stMarkdownContainer"] p, div[data-testid="stMarkdownContainer"] li { color: rgba(255,255,255,0.85); }
 div[data-testid="stMarkdownContainer"] h1, div[data-testid="stMarkdownContainer"] h2, div[data-testid="stMarkdownContainer"] h3, div[data-testid="stMarkdownContainer"] h4 { color: #ffffff; }
 
@@ -575,9 +639,8 @@ div[data-testid="stMarkdownContainer"] h1, div[data-testid="stMarkdownContainer"
 """, unsafe_allow_html=True)
 
 
-
-# 백그라운드 버블
-st.markdown('<div class="cfa-blob cfa-blob1"></div><div class="cfa-blob cfa-blob2"></div><div class="cfa-blob cfa-blob3"></div>', unsafe_allow_html=True)
+# 백그라운드 버블 제거 (요청에 따라 비움)
+pass
 
 # ------------------------------------------------------------------
 # 포토리얼리스틱 벡터 아이콘 정의
@@ -1372,7 +1435,7 @@ elif st.session_state.step == 2:
                 orig_img = Image.open(uploaded).convert("RGB")
                 st.caption("아래 박스의 모서리를 끌어 성분표 텍스트 영역만 알맞게 지정해 주세요.")
                 cropped_img = st_cropper(
-                    orig_img, realtime_update=True, box_color="#2563EB",
+                    orig_img, realtime_update=True, box_color="#ff00a0",
                     aspect_ratio=None, return_type="image"
                 )
                 st.session_state.label_original = orig_img
@@ -1498,6 +1561,16 @@ elif st.session_state.step == 2:
 # STEP 3: 설계 결과 대시보드
 # ------------------------------------------------------------------
 elif st.session_state.step == 3:
+    # Marker to hide magnifier lens and remove shapes on results page
+    st.markdown('<div id="cfa-step3-active" style="display:none;"></div>', unsafe_allow_html=True)
+    st.markdown("""
+    <style>
+    .stApp {
+        background: #070506 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
     ftype = st.session_state.ftype
     df = st.session_state.formulation
 
