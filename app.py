@@ -408,6 +408,8 @@ div[class*="stColumn"]:has(.cfa-tile-marker),
     width: 100%;
     height: 100%;
     object-fit: contain;
+    background: transparent !important;
+    background-color: transparent !important;
     filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 10px rgba(255, 0, 160, 0.15)) !important;
     transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.5s ease !important;
 }
@@ -780,12 +782,12 @@ def icon_cleanser():
 def get_category_image_or_svg(category_id, default_svg):
     import base64
     mapping = {
-        "serum": "logo_serum.png",
-        "lotion": "logo_lotion.png",
-        "cream": "logo_cream.png",
-        "toner": "logo_toner.png",
-        "ampoule": "logo_ampoule.png",
-        "cleanser": "logo_cleanser.png",
+        "serum": "logo_serum_trans.png",
+        "lotion": "logo_lotion_trans.png",
+        "cream": "logo_cream_trans.png",
+        "toner": "logo_toner_trans.png",
+        "ampoule": "logo_ampoule_trans.png",
+        "cleanser": "logo_cleanser_trans.png",
     }
     img_path = mapping.get(category_id)
     if img_path and os.path.exists(img_path):
