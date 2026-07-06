@@ -496,16 +496,55 @@ PHASE_PALETTE = ["#2563EB", "#6366F1", "#0EA5E9", "#818CF8", "#38BDF8", "#93C5FD
 # ------------------------------------------------------------------
 # 핵심 AI 유틸 함수
 # ------------------------------------------------------------------
+def call_gemini_with_retry(api_func, *args, max_attempts=5, initial_delay=2.0, **kwargs):
+    import time
+    delay = initial_delay
+    last_exception = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return api_func(*args, **kwargs)
+        except Exception as e:
+            last_exception = e
+            err_msg = str(e)
+            
+            # Check if it's an API Key or client configuration issue (these should fail immediately)
+            if "API_KEY_INVALID" in err_msg or "API key not valid" in err_msg or "400" in err_msg:
+                raise e
+            
+            # If it's a transient server issue, retry
+            is_transient = (
+                "503" in err_msg or 
+                "unavailable" in err_msg.lower() or 
+                "timeout" in err_msg.lower() or 
+                "connection" in err_msg.lower() or 
+                "500" in err_msg or
+                "429" in err_msg or
+                "quota" in err_msg.lower() or
+                "limit" in err_msg.lower()
+            )
+            
+            if is_transient and attempt < max_attempts:
+                # Show a warning in streamlit
+                st.warning(f"⚠️ Gemini API 서버가 혼잡하여 {delay:.1f}초 후 재시도합니다... (시도 {attempt}/{max_attempts})")
+                time.sleep(delay)
+                delay *= 1.5  # moderate backoff
+            else:
+                raise e
+    if last_exception:
+        raise last_exception
+
 def validate_api_key(api_key: str, model_name: str = "gemini-2.5-flash") -> tuple[bool, str]:
     """Gemini API 키의 유효성을 검사합니다."""
     if not api_key:
         return False, "API 키가 비어 있습니다."
     try:
         client = genai.Client(api_key=api_key)
-        client.models.generate_content(
+        call_gemini_with_retry(
+            client.models.generate_content,
             model=model_name,
             contents="Hello",
-            config=types.GenerateContentConfig(max_output_tokens=1)
+            config=types.GenerateContentConfig(max_output_tokens=1),
+            max_attempts=3
         )
         return True, ""
     except Exception as e:
@@ -541,7 +580,8 @@ def vision_extract_ingredients_from_crop(crop_img):
         "여기 보이는 전성분(INCI 포함)을 빠짐없이 한국어 원료명으로 추출해서 쉼표로 구분된 목록으로만 출력해. "
         "다른 설명은 넣지 마."
     )
-    resp = client.models.generate_content(
+    resp = call_gemini_with_retry(
+        client.models.generate_content,
         model=st.session_state.model_name,
         contents=[types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"), prompt],
     )
@@ -606,7 +646,8 @@ def generate_formulation(ftype, db_df, existing_ingredients=None):
 보유 원료 DB 목록(단가 매칭용, 참고):
 {', '.join(db_names)}
 """
-    resp = client.models.generate_content(
+    resp = call_gemini_with_retry(
+        client.models.generate_content,
         model=st.session_state.model_name,
         contents=[prompt],
         config=types.GenerateContentConfig(
@@ -634,7 +675,8 @@ def refine_formulation(ftype, db_df, current_raw_formulation, feedback_text):
 보유 원료 DB 목록(참고):
 {', '.join(db_names)}
 """
-    resp = client.models.generate_content(
+    resp = call_gemini_with_retry(
+        client.models.generate_content,
         model=st.session_state.model_name,
         contents=[prompt],
         config=types.GenerateContentConfig(
