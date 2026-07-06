@@ -1561,15 +1561,8 @@ elif st.session_state.step == 2:
 # STEP 3: 설계 결과 대시보드
 # ------------------------------------------------------------------
 elif st.session_state.step == 3:
-    # Marker to hide magnifier lens and remove shapes on results page
+    # Marker to hide magnifier lens on results page
     st.markdown('<div id="cfa-step3-active" style="display:none;"></div>', unsafe_allow_html=True)
-    st.markdown("""
-    <style>
-    .stApp {
-        background: #070506 !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
     
     ftype = st.session_state.ftype
     df = st.session_state.formulation
