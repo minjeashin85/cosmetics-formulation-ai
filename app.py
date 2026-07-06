@@ -111,7 +111,7 @@ components.html("""
   doc.addEventListener('mousemove', function(e) {
     const s = ensureSpot();
     s.style.background =
-      'radial-gradient(750px circle at ' + e.clientX + 'px ' + e.clientY + 'px, rgba(37,99,235,0.12), rgba(99,102,241,0.04) 35%, transparent 60%)';
+      'radial-gradient(850px circle at ' + e.clientX + 'px ' + e.clientY + 'px, rgba(6,182,212,0.15), rgba(217,70,239,0.06) 30%, transparent 60%)';
   });
 })();
 </script>
@@ -124,98 +124,98 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif; }
-.stApp { background: #fafafa; }
+.stApp { background: #080415; color: #f8fafc; }
 
-/* 배경 장식 애니메이션 블롭 */
-.cfa-blob { position: fixed; border-radius: 50%; filter: blur(100px); opacity: 0.35; z-index: -1; pointer-events:none; }
-.cfa-blob1 { width: 500px; height: 500px; background: radial-gradient(circle, #60a5fa, transparent 70%); top: -150px; left: -100px; animation: floatA 22s ease-in-out infinite; }
-.cfa-blob2 { width: 450px; height: 450px; background: radial-gradient(circle, #818cf8, transparent 70%); bottom: -180px; right: -80px; animation: floatB 26s ease-in-out infinite; }
-.cfa-blob3 { width: 350px; height: 350px; background: radial-gradient(circle, #38bdf8, transparent 70%); top: 35%; left: 45%; animation: floatC 28s ease-in-out infinite; opacity:0.18; }
-@keyframes floatA { 0%,100%{transform:translate(0,0) scale(1);} 50%{transform:translate(80px,60px) scale(1.05);} }
-@keyframes floatB { 0%,100%{transform:translate(0,0) scale(1);} 50%{transform:translate(-70px,-50px) scale(1.08);} }
-@keyframes floatC { 0%,100%{transform:translate(0,0);} 50%{transform:translate(-50px,70px);} }
+/* 배경 장식 애니메이션 블롭 - Deep Space Anti-Gravity Chamber */
+.cfa-blob { position: fixed; border-radius: 50%; filter: blur(140px); opacity: 0.28; z-index: -1; pointer-events:none; }
+.cfa-blob1 { width: 550px; height: 550px; background: radial-gradient(circle, #d946ef, transparent 72%); top: -180px; left: -120px; animation: floatA 24s ease-in-out infinite; }
+.cfa-blob2 { width: 500px; height: 500px; background: radial-gradient(circle, #06b6d4, transparent 72%); bottom: -200px; right: -100px; animation: floatB 28s ease-in-out infinite; }
+.cfa-blob3 { width: 400px; height: 400px; background: radial-gradient(circle, #3b82f6, transparent 72%); top: 30%; left: 40%; animation: floatC 30s ease-in-out infinite; }
+@keyframes floatA { 0%,100%{transform:translate(0,0) scale(1);} 50%{transform:translate(100px,80px) scale(1.08);} }
+@keyframes floatB { 0%,100%{transform:translate(0,0) scale(1);} 50%{transform:translate(-90px,-70px) scale(1.1);} }
+@keyframes floatC { 0%,100%{transform:translate(0,0);} 50%{transform:translate(-60px,90px);} }
 
 /* 헤더 & 네비게이션 */
-.cfa-header-row { display:flex; align-items:center; justify-content:space-between; padding: 12px 6px; position:relative; z-index:2; border-bottom: 1px solid rgba(226, 232, 240, 0.6); }
+.cfa-header-row { display:flex; align-items:center; justify-content:space-between; padding: 16px 8px; position:relative; z-index:2; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
 .cfa-brand { display:flex; align-items:center; gap:16px; }
-.cfa-brand .badge { width:48px; height:48px; border-radius:16px; background: linear-gradient(135deg, #2563EB, #4f46e5); display:flex; align-items:center; justify-content:center; font-size:24px; box-shadow: 0 8px 24px rgba(37,99,235,0.25); }
-.cfa-brand h1 { font-family:'Space Grotesk',sans-serif; font-size:24px; font-weight:700; color:#0F172A; margin:0; line-height:1.1; }
-.cfa-brand p { font-size:11px; color:#64748b; letter-spacing:1.8px; text-transform:uppercase; margin:2px 0 0 0; }
+.cfa-brand .badge { width:48px; height:48px; border-radius:16px; background: linear-gradient(135deg, #d946ef, #3b82f6); display:flex; align-items:center; justify-content:center; font-size:24px; box-shadow: 0 0 20px rgba(6, 182, 212, 0.4); }
+.cfa-brand h1 { font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:700; color:#ffffff; margin:0; line-height:1.1; text-shadow: 0 0 15px rgba(6, 182, 212, 0.3); }
+.cfa-brand p { font-size:11px; color:#a78bfa; letter-spacing:1.8px; text-transform:uppercase; margin:2px 0 0 0; font-weight: 600; }
 
-/* 단계 표시 인디케이터 (Stepper) */
-.cfa-stepper { display: flex; align-items: center; justify-content: center; gap: 16px; margin: 24px 0; font-family: 'Space Grotesk', sans-serif; }
-.cfa-step { display: flex; align-items: center; gap: 8px; padding: 8px 18px; border-radius: 999px; background: rgba(255,255,255,0.7); border: 1px solid rgba(226,232,240,0.8); font-size: 13.5px; font-weight: 600; color: #64748b; transition: all 0.3s; }
-.cfa-step.active { background: linear-gradient(135deg, rgba(37,99,235,0.1), rgba(99,102,241,0.1)); border-color: rgba(37,99,235,0.4); color: #2563EB; box-shadow: 0 4px 12px rgba(37,99,235,0.06); }
-.cfa-step.done { background: rgba(255,255,255,0.9); border-color: #3b82f6; color: #1e3a8a; }
-.cfa-step-arrow { color: #cbd5e1; font-weight: bold; }
+/* 단계 표시 인디케이터 (Stepper) - Floating Glass Capsules */
+.cfa-stepper { display: flex; align-items: center; justify-content: center; gap: 16px; margin: 28px 0; font-family: 'Space Grotesk', sans-serif; }
+.cfa-step { display: flex; align-items: center; gap: 8px; padding: 8px 20px; border-radius: 999px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); font-size: 13.5px; font-weight: 600; color: #94a3b8; transition: all 0.3s; }
+.cfa-step.active { background: linear-gradient(135deg, rgba(6,182,212,0.15), rgba(217,70,239,0.08)); border-color: rgba(6,182,212,0.5); color: #06b6d4; box-shadow: 0 0 15px rgba(6,182,212,0.25); }
+.cfa-step.done { background: rgba(255,255,255,0.06); border-color: #3b82f6; color: #38bdf8; }
+.cfa-step-arrow { color: rgba(255,255,255,0.15); font-weight: bold; }
 
-/* 리퀴드 글라스 프리미엄 카드 디자인 */
+/* 리퀴드 글라스 프리미엄 카드 디자인 - Multi-layered Crystal Glass */
 .liquid-glass {
     position: relative; border-radius: 24px;
-    background: linear-gradient(160deg, rgba(255,255,255,0.75), rgba(255,255,255,0.45));
-    backdrop-filter: blur(20px) saturate(190%);
-    -webkit-backdrop-filter: blur(20px) saturate(190%);
-    border: 1px solid rgba(255,255,255,0.95);
-    box-shadow: 0 12px 36px rgba(15,23,42,0.05), inset 0 1px 1px rgba(255,255,255,0.9), inset 0 -1px 8px rgba(148,163,184,0.08);
+    background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.01));
+    backdrop-filter: blur(30px) saturate(220%);
+    -webkit-backdrop-filter: blur(30px) saturate(220%);
+    border: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 0 25px 60px rgba(0,0,0,0.55), inset 0 1px 1px rgba(255,255,255,0.25), inset 0 -1px 8px rgba(255,255,255,0.05);
     overflow: hidden; z-index:1; padding: 24px;
 }
-.liquid-glass::before { content: ""; position: absolute; top:0; left:10%; right:10%; height:1.5px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent); }
+.liquid-glass::before { content: ""; position: absolute; top:0; left:10%; right:10%; height:1.5px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); }
 
 /* 제형 선택 그리드 및 호버 효과 */
 .cfa-type-grid div[data-testid="column"] { position: relative; }
-.cfa-tile { padding: 20px 8px 12px 8px; text-align:center; margin-bottom: 14px; display:flex; flex-direction:column; align-items:center; }
-.cfa-icon-wrap { width: 140px; height: 140px; margin: 0 auto; transition: transform .45s cubic-bezier(.175,.885,.32,1.275), filter .45s; }
+.cfa-tile { padding: 24px 8px 16px 8px; text-align:center; margin-bottom: 14px; display:flex; flex-direction:column; align-items:center; }
+.cfa-icon-wrap { width: 140px; height: 140px; margin: 0 auto; transition: transform .5s cubic-bezier(.175,.885,.32,1.275), filter .5s; }
 .cfa-type-grid div[data-testid="column"]:hover .cfa-icon-wrap {
-    transform: scale(1.15) rotate(-3deg);
-    filter: drop-shadow(0 20px 28px rgba(37,99,235,0.28));
+    transform: scale(1.18) rotate(-4deg);
+    filter: drop-shadow(0 0 25px rgba(6,182,212,0.45));
 }
 .cfa-name-pill {
     position: relative; overflow: hidden;
     display:inline-flex; align-items:center; justify-content:center;
-    margin-top:12px; padding: 8px 24px; border-radius:999px;
-    background: linear-gradient(160deg, rgba(255,255,255,0.85), rgba(255,255,255,0.55));
-    backdrop-filter: blur(14px);
-    border:1px solid rgba(255,255,255,0.9);
-    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px; color:#0F172A;
-    box-shadow: 0 4px 16px rgba(15,23,42,0.05), inset 0 1px 1px rgba(255,255,255,0.8);
+    margin-top:14px; padding: 8px 26px; border-radius:999px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
+    backdrop-filter: blur(16px);
+    border:1px solid rgba(255,255,255,0.12);
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px; color:#ffffff;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.2);
     transition: all .35s cubic-bezier(.2,.8,.2,1);
     width: max-content; white-space: nowrap;
 }
 .cfa-name-pill::before {
     content: ""; position:absolute; top:-60%; left:-30%; width:60%; height:220%;
-    background: linear-gradient(120deg, rgba(255,255,255,0.6), transparent 60%);
+    background: linear-gradient(120deg, rgba(255,255,255,0.3), transparent 60%);
     transform: rotate(20deg); pointer-events:none; z-index:2;
 }
 .cfa-name-pill::after {
     content: ""; position:absolute; width:24px; height:24px; border-radius:50%;
-    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.95), rgba(147,197,253,0.2) 70%);
+    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.4), rgba(6,182,212,0.1) 70%);
     top:50%; left:10%;
-    animation: cfaDropletA 5s ease-in-out infinite;
+    animation: cfaDropletA 6s ease-in-out infinite;
     pointer-events:none; z-index:1;
 }
 .cfa-liquid-drop2 {
     content: ""; position:absolute; width:14px; height:14px; border-radius:50%;
-    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.9), rgba(99,102,241,0.2) 70%);
+    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.4), rgba(217,70,239,0.1) 70%);
     top:60%; left:60%;
-    animation: cfaDropletB 3.5s ease-in-out infinite;
+    animation: cfaDropletB 4s ease-in-out infinite;
     pointer-events:none; z-index:1;
 }
 @keyframes cfaDropletA {
-    0%   { transform: translate(0,-50%) scale(0.8); opacity:0.4; }
-    30%  { transform: translate(70px,-65%) scale(1.15); opacity:0.85; }
-    60%  { transform: translate(140px,-35%) scale(0.75); opacity:0.5; }
-    100% { transform: translate(0,-50%) scale(0.8); opacity:0.4; }
+    0%   { transform: translate(0,-50%) scale(0.8); opacity:0.3; }
+    30%  { transform: translate(70px,-65%) scale(1.15); opacity:0.7; }
+    60%  { transform: translate(140px,-35%) scale(0.75); opacity:0.4; }
+    100% { transform: translate(0,-50%) scale(0.8); opacity:0.3; }
 }
 @keyframes cfaDropletB {
-    0%   { transform: translate(0,0) scale(0.6); opacity:0.3; }
-    40%  { transform: translate(-50px,-20px) scale(1.05); opacity:0.8; }
-    100% { transform: translate(0,0) scale(0.6); opacity:0.3; }
+    0%   { transform: translate(0,0) scale(0.6); opacity:0.25; }
+    40%  { transform: translate(-50px,-20px) scale(1.05); opacity:0.65; }
+    100% { transform: translate(0,0) scale(0.6); opacity:0.25; }
 }
 .cfa-type-grid div[data-testid="column"]:hover .cfa-name-pill {
-    background: linear-gradient(135deg, rgba(37,99,235,0.7), rgba(99,102,241,0.65));
-    border-color: rgba(255,255,255,0.5);
+    background: linear-gradient(135deg, rgba(217,70,239,0.7), rgba(59,130,246,0.65));
+    border-color: rgba(255,255,255,0.4);
     color:#fff; transform: translateY(-4px) scale(1.05);
-    box-shadow: 0 16px 36px rgba(37,99,235,0.28), inset 0 1px 1px rgba(255,255,255,0.4);
+    box-shadow: 0 16px 36px rgba(217,70,239,0.35), inset 0 1px 1px rgba(255,255,255,0.3);
 }
 .cfa-type-grid div[data-testid="column"] .stButton {
     position: absolute; inset: 0; z-index: 5; margin: 0 !important; height: 100%;
@@ -228,63 +228,65 @@ html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif; }
 /* SVG 아이콘 내부 부품 호버 애니메이션 */
 @keyframes cfaWobble { 0%{transform:rotate(0);} 25%{transform:rotate(-4deg);} 50%{transform:rotate(3deg);} 75%{transform:rotate(-1.5deg);} 100%{transform:rotate(0);} }
 @keyframes cfaCapPop { 0%,100%{transform:translateY(0);} 45%{transform:translateY(-6px);} }
-@keyframes cfaBubbleUp { 0%{transform:translateY(0) scale(0.5); opacity:0;} 25%{opacity:1; transform:translateY(-8px) scale(1);} 100%{transform:translateY(-36px) scale(0.4); opacity:0;} }
-@keyframes cfaShineSweep { 0%{transform:translateX(-35px); opacity:0;} 35%{opacity:.9;} 100%{transform:translateX(35px); opacity:0;} }
+@keyframes cfaBubbleUp { 0%{transform:translateY(0) scale(0.5); opacity:0;} 25%{opacity:0.8; transform:translateY(-8px) scale(1);} 100%{transform:translateY(-36px) scale(0.4); opacity:0;} }
+@keyframes cfaShineSweep { 0%{transform:translateX(-35px); opacity:0;} 35%{opacity:.7;} 100%{transform:translateX(35px); opacity:0;} }
 .cfa-type-grid div[data-testid="column"]:hover .cfa-body-anim { animation: cfaWobble .8s ease-in-out; transform-box: fill-box; transform-origin: 50% 100%; }
 .cfa-type-grid div[data-testid="column"]:hover .cfa-cap-anim { animation: cfaCapPop .8s ease-in-out; transform-box: fill-box; transform-origin: 50% 100%; }
 .cfa-type-grid div[data-testid="column"]:hover .cfa-bubble-anim { animation: cfaBubbleUp 1.2s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
 .cfa-type-grid div[data-testid="column"]:hover .cfa-shine-anim { animation: cfaShineSweep .95s ease-in-out infinite; }
 
-/* 로딩 애니메이션 */
+/* 로딩 애니메이션 - Glowing Beaker Liquid */
 .cfa-loading-box { padding: 64px 20px; text-align:center; }
 .cfa-ring-wrap { position:relative; width:120px; height:120px; margin:0 auto 28px auto; }
-.cfa-ring { position:absolute; inset:0; border-radius:50%; border:2px solid rgba(37,99,235,0.4); animation: cfaPulse 2.1s ease-out infinite; }
+.cfa-ring { position:absolute; inset:0; border-radius:50%; border:2px solid rgba(6,182,212,0.4); animation: cfaPulse 2.1s ease-out infinite; }
 .cfa-ring.d2 { animation-delay: 1.05s; }
 @keyframes cfaPulse { 0%{transform:scale(0.8);opacity:0.8;} 80%{transform:scale(1.3);opacity:0;} 100%{opacity:0;} }
-.cfa-core { position:absolute; inset:22px; border-radius:50%; background: conic-gradient(from 0deg,#2563EB,#6366F1,#38bdf8,#2563EB); animation: cfaSpin 2.5s linear infinite; }
+.cfa-core { position:absolute; inset:22px; border-radius:50%; background: conic-gradient(from 0deg,#d946ef,#06b6d4,#3b82f6,#d946ef); animation: cfaSpin 2.5s linear infinite; }
 @keyframes cfaSpin { to { transform:rotate(360deg); } }
-.cfa-core-inner { position:absolute; inset:10px; border-radius:50%; background: rgba(255,255,255,0.92); backdrop-filter: blur(10px); display:flex; align-items:center; justify-content:center; font-size:28px; }
-.cfa-loading-label { font-size:12px; letter-spacing:3px; text-transform:uppercase; color:#94a3b8; font-weight:600; margin-bottom:8px; }
-.cfa-loading-msg { font-size:16px; color:#0F172A; font-weight:500; }
+.cfa-core-inner { position:absolute; inset:10px; border-radius:50%; background: rgba(13,8,30,0.9); backdrop-filter: blur(10px); display:flex; align-items:center; justify-content:center; font-size:28px; border: 1px solid rgba(255,255,255,0.1); }
+.cfa-loading-label { font-size:12px; letter-spacing:3px; text-transform:uppercase; color:#a78bfa; font-weight:600; margin-bottom:8px; }
+.cfa-loading-msg { font-size:16px; color:#ffffff; font-weight:500; text-shadow: 0 0 10px rgba(6,182,212,0.3); }
 
 /* 대시보드 요약 요소를 위한 카드 */
 .cfa-summary { padding: 22px 24px; text-align:left; }
 .cfa-summary .label { font-size:11px; letter-spacing:1.6px; text-transform:uppercase; color:#94a3b8; font-weight:600; }
-.cfa-summary .value { font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:700; color:#0F172A; margin-top:6px; }
-.cfa-summary.accent { background: linear-gradient(160deg, rgba(219,234,254,0.7), rgba(224,231,255,0.5)); border-color: rgba(37,99,235,0.15); }
-.cfa-summary.accent .value { color:#2563EB; }
+.cfa-summary .value { font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:700; color:#ffffff; margin-top:6px; }
+.cfa-summary.accent { background: linear-gradient(160deg, rgba(6,182,212,0.15), rgba(217,70,239,0.08)); border-color: rgba(6,182,212,0.3); }
+.cfa-summary.accent .value { color:#06b6d4; text-shadow: 0 0 15px rgba(6, 182, 212, 0.4); }
 
-/* 처방 테이블 */
+/* 처방 테이블 - Dark Glass Design */
 .cfa-table-wrap { padding: 4px; overflow-x: auto; }
 .cfa-table { width:100%; border-collapse:collapse; font-size:14px; min-width: 600px; }
-.cfa-table thead th { text-align:left; padding:14px 18px; font-size:11px; letter-spacing:1.2px; text-transform:uppercase; color:#64748b; font-weight:700; border-bottom:1px solid rgba(226,232,240,0.8); }
+.cfa-table thead th { text-align:left; padding:14px 18px; font-size:11px; letter-spacing:1.2px; text-transform:uppercase; color:#94a3b8; font-weight:700; border-bottom:1px solid rgba(255,255,255,0.12); }
 .cfa-table thead th.num { text-align:right; }
-.cfa-table tbody td { padding:13px 18px; color:#334155; border-bottom:1px solid rgba(226,232,240,0.4); }
+.cfa-table tbody td { padding:13px 18px; color:#cbd5e1; border-bottom:1px solid rgba(255,255,255,0.06); }
 .cfa-table tbody td.num { text-align:right; font-variant-numeric: tabular-nums; }
-.cfa-table tbody tr:hover td { background: rgba(37,99,235,0.03); }
-.cfa-table td.phase { color:#2563EB; font-weight:700; font-size:12.5px; white-space:nowrap; }
-.cfa-table td.name { color:#0F172A; font-weight:600; }
-.cfa-table td.fn { color:#64748b; font-size:12.5px; }
-.cfa-table td.dbtag { font-size:10px; color:#b45309; font-weight:600; margin-top:2px; }
-.cfa-table tfoot td { padding:16px 18px; font-weight:700; color:#0F172A; border-top:2px solid rgba(37,99,235,0.2); background: rgba(37,99,235,0.03); }
+.cfa-table tbody tr:hover td { background: rgba(6, 182, 212, 0.08); }
+.cfa-table td.phase { color:#38bdf8; font-weight:700; font-size:12.5px; white-space:nowrap; }
+.cfa-table td.name { color:#ffffff; font-weight:600; }
+.cfa-table td.fn { color:#94a3b8; font-size:12.5px; }
+.cfa-table td.dbtag { font-size:10px; color:#fbbf24; font-weight:600; margin-top:2px; }
+.cfa-table tfoot td { padding:16px 18px; font-weight:700; color:#ffffff; border-top:2px solid rgba(6, 182, 212, 0.3); background: rgba(6, 182, 212, 0.05); }
 
-/* 스트림릿 기본 컴포넌트 커스텀 오버라이드 */
-[data-testid="stExpander"] { background: rgba(255,255,255,0.65)!important; backdrop-filter: blur(20px) saturate(180%); border-radius: 20px!important; border: 1px solid rgba(226,232,240,0.8)!important; }
+/* 스트림릿 기본 컴포넌트 커스텀 오버라이드 (다크 크리스탈 스타일) */
+[data-testid="stExpander"] { background: rgba(13,8,30,0.65)!important; backdrop-filter: blur(25px) saturate(180%); border-radius: 20px!important; border: 1px solid rgba(255,255,255,0.12)!important; }
 .stButton>button, [data-testid="stDownloadButton"] button {
-    border-radius: 999px!important; background: rgba(255,255,255,0.85)!important;
-    backdrop-filter: blur(12px); border: 1px solid rgba(226,232,240,0.8)!important;
-    color:#0F172A!important; font-weight:600!important;
-    box-shadow: 0 4px 14px rgba(15,23,42,0.05), inset 0 1px 0 rgba(255,255,255,0.9); transition: all .25s ease-out;
+    border-radius: 999px!important; background: rgba(255,255,255,0.06)!important;
+    backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.12)!important;
+    color:#ffffff!important; font-weight:600!important;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1); transition: all .25s ease-out;
 }
-.stButton>button:hover, [data-testid="stDownloadButton"] button:hover { background: rgba(37,99,235,0.1)!important; border-color: rgba(37,99,235,0.4)!important; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(37,99,235,0.15); }
-button[kind="primary"] { background: linear-gradient(135deg, rgba(37,99,235,0.95), rgba(79,70,229,0.95))!important; border: 1px solid rgba(255,255,255,0.3)!important; color:#fff!important; box-shadow: 0 6px 18px rgba(37,99,235,0.25)!important; }
-button[kind="primary"]:hover { filter: brightness(1.15); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(37,99,235,0.35)!important; }
-div[data-baseweb="input"], div[data-baseweb="base-input"] { background: rgba(255,255,255,0.7)!important; backdrop-filter: blur(10px); border-radius: 14px!important; border: 1px solid rgba(226,232,240,0.8)!important; }
-[data-testid="stFileUploaderDropzone"] { background: rgba(255,255,255,0.5)!important; backdrop-filter: blur(18px) saturate(180%); border-radius: 20px!important; border: 1px dashed rgba(148,163,184,0.4)!important; }
+.stButton>button:hover, [data-testid="stDownloadButton"] button:hover { background: rgba(6,182,212,0.15)!important; border-color: rgba(6,182,212,0.5)!important; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(6,182,212,0.25); }
+button[kind="primary"] { background: linear-gradient(135deg, #d946ef, #3b82f6)!important; border: 1px solid rgba(255,255,255,0.25)!important; color:#fff!important; box-shadow: 0 0 15px rgba(6,182,212,0.5)!important; }
+button[kind="primary"]:hover { filter: brightness(1.15); transform: translateY(-2px); box-shadow: 0 0 22px rgba(6,182,212,0.7)!important; }
+div[data-baseweb="input"], div[data-baseweb="base-input"] { background: rgba(13,8,30,0.85)!important; backdrop-filter: blur(12px); border-radius: 14px!important; border: 1px solid rgba(255,255,255,0.12)!important; color:#ffffff!important; }
+[data-testid="stFileUploaderDropzone"] { background: rgba(255,255,255,0.03)!important; backdrop-filter: blur(18px) saturate(180%); border-radius: 20px!important; border: 1px dashed rgba(255,255,255,0.2)!important; }
+div[data-testid="stMarkdownContainer"] p, div[data-testid="stMarkdownContainer"] li { color: #cbd5e1; }
+div[data-testid="stMarkdownContainer"] h1, div[data-testid="stMarkdownContainer"] h2, div[data-testid="stMarkdownContainer"] h3, div[data-testid="stMarkdownContainer"] h4 { color: #ffffff; }
 
 /* 텍스트 렌더링 카드 */
-.report-card { background: rgba(255,255,255,0.55); border-radius: 16px; border: 1px solid rgba(226,232,240,0.6); padding: 20px; line-height: 1.6; }
-.report-card h4 { font-family:'Space Grotesk',sans-serif; color: #1e3a8a; margin-top: 0; }
+.report-card { background: rgba(13,8,30,0.5); border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); padding: 20px; line-height: 1.6; color:#cbd5e1; }
+.report-card h4 { font-family:'Space Grotesk',sans-serif; color: #ffffff; margin-top: 0; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -294,60 +296,68 @@ st.markdown('<div class="cfa-blob cfa-blob1"></div><div class="cfa-blob cfa-blob
 # ------------------------------------------------------------------
 # 포토리얼리스틱 벡터 아이콘 정의
 # ------------------------------------------------------------------
-def svg_wrap(inner, c1, c2, cap1="#334155", cap2="#0F172A"):
+def svg_wrap(inner, gid, c1, c2, cap1="#334155", cap2="#0b0f19"):
+    inner_clean = inner.replace("url(#g)", f"url(#g_{gid})") \
+                       .replace("url(#bg)", f"url(#bg_{gid})") \
+                       .replace("url(#cap)", f"url(#cap_{gid})") \
+                       .replace("url(#shine)", f"url(#shine_{gid})") \
+                       .replace("url(#floorshadow)", f"url(#floorshadow_{gid})") \
+                       .replace("filter=\"url(#soft)\"", f"filter=\"url(#soft_{gid})\"") \
+                       .replace("filter: url(#soft)", f"filter: url(#soft_{gid})")
+    
     return f'''<svg width="140" height="140" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <radialGradient id="bg" cx="35%" cy="22%" r="80%">
-          <stop offset="0%" stop-color="{c1}" stop-opacity="0.14"/>
+        <radialGradient id="bg_{gid}" cx="35%" cy="22%" r="80%">
+          <stop offset="0%" stop-color="{c1}" stop-opacity="0.18"/>
           <stop offset="100%" stop-color="{c1}" stop-opacity="0.0"/>
         </radialGradient>
-        <linearGradient id="g" x1="0.15" y1="0" x2="0.9" y2="1">
+        <linearGradient id="g_{gid}" x1="0.15" y1="0" x2="0.9" y2="1">
           <stop offset="0%" stop-color="{c1}"/><stop offset="55%" stop-color="{c2}"/><stop offset="100%" stop-color="{c2}"/>
         </linearGradient>
-        <linearGradient id="cap" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id="cap_{gid}" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="{cap1}"/><stop offset="100%" stop-color="{cap2}"/>
         </linearGradient>
-        <linearGradient id="shine" x1="0" y1="0" x2="1" y2="1">
+        <linearGradient id="shine_{gid}" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stop-color="white" stop-opacity="0.8"/>
           <stop offset="100%" stop-color="white" stop-opacity="0"/>
         </linearGradient>
-        <radialGradient id="floorshadow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stop-color="#0F172A" stop-opacity="0.18"/>
-          <stop offset="100%" stop-color="#0F172A" stop-opacity="0"/>
+        <radialGradient id="floorshadow_{gid}" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#05020c" stop-opacity="0.4"/>
+          <stop offset="100%" stop-color="#05020c" stop-opacity="0"/>
         </radialGradient>
-        <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+        <filter id="soft_{gid}" x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur stdDeviation="1.4"/>
         </filter>
       </defs>
-      <circle cx="70" cy="66" r="64" fill="url(#bg)"/>
-      {inner}
-      <ellipse cx="70" cy="126" rx="34" ry="8" fill="url(#floorshadow)"/>
+      <circle cx="70" cy="66" r="64" fill="url(#bg_{gid})"/>
+      {inner_clean}
+      <ellipse cx="70" cy="126" rx="34" ry="8" fill="url(#floorshadow_{gid})"/>
     </svg>'''
 
 def icon_serum():
     inner = '''
     <path class="cfa-body-anim" d="M52 58 Q52 48 62 48 L78 48 Q88 48 88 58 L88 106 Q88 120 70 120 Q52 120 52 106 Z" fill="url(#g)"/>
     <rect class="cfa-cap-anim" x="59" y="16" width="22" height="38" rx="10" fill="url(#cap)"/>
-    <ellipse class="cfa-cap-anim" cx="70" cy="16" rx="11" ry="5.5" fill="#64748b"/>
+    <ellipse class="cfa-cap-anim" cx="70" cy="16" rx="11" ry="5.5" fill="#a78bfa"/>
     <path class="cfa-shine-anim" d="M56 60 Q54 68 56 106 Q58 116 70 118" stroke="url(#shine)" stroke-width="7" fill="none" stroke-linecap="round" filter="url(#soft)"/>
     <circle class="cfa-bubble-anim" cx="70" cy="90" r="3" fill="rgba(255,255,255,0.6)" style="animation-delay:0s"/>
     <circle class="cfa-bubble-anim" cx="64" cy="98" r="2" fill="rgba(255,255,255,0.5)" style="animation-delay:.2s"/>
     <circle class="cfa-bubble-anim" cx="76" cy="82" r="2.4" fill="rgba(255,255,255,0.5)" style="animation-delay:.4s"/>
     '''
-    return svg_wrap(inner, "#93c5fd", "#1e3a8a")
+    return svg_wrap(inner, "serum", "#d946ef", "#3b82f6")
 
 def icon_lotion():
     inner = '''
     <rect class="cfa-body-anim" x="44" y="60" width="52" height="60" rx="22" fill="url(#g)"/>
     <rect class="cfa-cap-anim" x="55" y="26" width="30" height="38" rx="10" fill="url(#cap)"/>
-    <rect class="cfa-cap-anim" x="63" y="10" width="34" height="14" rx="7" fill="#64748b"/>
-    <circle class="cfa-cap-anim" cx="90" cy="6" r="3.8" fill="#93c5fd"/>
+    <rect class="cfa-cap-anim" x="63" y="10" width="34" height="14" rx="7" fill="#a78bfa"/>
+    <circle class="cfa-cap-anim" cx="90" cy="6" r="3.8" fill="#06b6d4"/>
     <path class="cfa-shine-anim" d="M50 64 Q48 74 50 114" stroke="url(#shine)" stroke-width="8" fill="none" stroke-linecap="round" filter="url(#soft)"/>
     <circle class="cfa-bubble-anim" cx="80" cy="98" r="3.8" fill="rgba(255,255,255,0.55)" style="animation-delay:0s"/>
     <circle class="cfa-bubble-anim" cx="86" cy="86" r="2.4" fill="rgba(255,255,255,0.4)" style="animation-delay:.25s"/>
     <circle class="cfa-bubble-anim" cx="72" cy="108" r="2" fill="rgba(255,255,255,0.4)" style="animation-delay:.5s"/>
     '''
-    return svg_wrap(inner, "#7dd3fc", "#1e40af")
+    return svg_wrap(inner, "lotion", "#06b6d4", "#3b82f6")
 
 def icon_cream():
     inner = '''
@@ -358,20 +368,20 @@ def icon_cream():
     <circle class="cfa-bubble-anim" cx="60" cy="88" r="3" fill="rgba(255,255,255,0.5)" style="animation-delay:.1s"/>
     <circle class="cfa-bubble-anim" cx="90" cy="94" r="2.4" fill="rgba(255,255,255,0.45)" style="animation-delay:.35s"/>
     '''
-    return svg_wrap(inner, "#a5b4fc", "#1d4ed8")
+    return svg_wrap(inner, "cream", "#d946ef", "#06b6d4")
 
 def icon_toner():
     inner = '''
     <rect class="cfa-body-anim" x="55" y="62" width="30" height="56" rx="13" fill="url(#g)"/>
     <rect class="cfa-cap-anim" x="61" y="30" width="18" height="34" rx="5" fill="url(#cap)"/>
-    <rect class="cfa-cap-anim" x="70" y="18" width="30" height="14" rx="7" fill="#64748b"/>
-    <rect class="cfa-cap-anim" x="87" y="8" width="9" height="16" rx="3.4" fill="#94a3b8"/>
-    <circle class="cfa-bubble-anim" cx="107" cy="8" r="2" fill="#93c5fd" opacity="0.9" style="animation-delay:0s"/>
-    <circle class="cfa-bubble-anim" cx="114" cy="16" r="1.5" fill="#93c5fd" opacity="0.7" style="animation-delay:.2s"/>
-    <circle class="cfa-bubble-anim" cx="103" cy="22" r="1.2" fill="#93c5fd" opacity="0.6" style="animation-delay:.4s"/>
+    <rect class="cfa-cap-anim" x="70" y="18" width="30" height="14" rx="7" fill="#a78bfa"/>
+    <rect class="cfa-cap-anim" x="87" y="8" width="9" height="16" rx="3.4" fill="#a78bfa"/>
+    <circle class="cfa-bubble-anim" cx="107" cy="8" r="2" fill="#06b6d4" opacity="0.9" style="animation-delay:0s"/>
+    <circle class="cfa-bubble-anim" cx="114" cy="16" r="1.5" fill="#06b6d4" opacity="0.7" style="animation-delay:.2s"/>
+    <circle class="cfa-bubble-anim" cx="103" cy="22" r="1.2" fill="#06b6d4" opacity="0.6" style="animation-delay:.4s"/>
     <path class="cfa-shine-anim" d="M60 66 Q58 76 60 108" stroke="url(#shine)" stroke-width="5.5" fill="none" stroke-linecap="round" filter="url(#soft)"/>
     '''
-    return svg_wrap(inner, "#38bdf8", "#0369a1")
+    return svg_wrap(inner, "toner", "#06b6d4", "#d946ef")
 
 def icon_ampoule():
     inner = '''
@@ -384,19 +394,19 @@ def icon_ampoule():
     <path class="cfa-shine-anim" d="M61 50 Q59 60 61 108" stroke="url(#shine)" stroke-width="6.5" fill="none" stroke-linecap="round" filter="url(#soft)"/>
     <circle class="cfa-bubble-anim" cx="75" cy="72" r="2.6" fill="rgba(255,255,255,0.5)" style="animation-delay:.15s"/>
     '''
-    return svg_wrap(inner, "#a5b4fc", "#312e81")
+    return svg_wrap(inner, "ampoule", "#3b82f6", "#06b6d4")
 
 def icon_cleanser():
     inner = '''
     <rect class="cfa-body-anim" x="44" y="62" width="52" height="56" rx="20" fill="url(#g)"/>
     <rect class="cfa-cap-anim" x="55" y="30" width="30" height="34" rx="10" fill="url(#cap)"/>
-    <rect class="cfa-cap-anim" x="63" y="14" width="34" height="14" rx="7" fill="#64748b"/>
+    <rect class="cfa-cap-anim" x="63" y="14" width="34" height="14" rx="7" fill="#a78bfa"/>
     <circle class="cfa-bubble-anim" cx="56" cy="96" r="5.6" fill="rgba(255,255,255,0.6)" style="animation-delay:0s"/>
     <circle class="cfa-bubble-anim" cx="72" cy="104" r="3.8" fill="rgba(255,255,255,0.5)" style="animation-delay:.25s"/>
     <circle class="cfa-bubble-anim" cx="80" cy="92" r="2.9" fill="rgba(255,255,255,0.45)" style="animation-delay:.5s"/>
     <path class="cfa-shine-anim" d="M50 66 Q48 76 50 112" stroke="url(#shine)" stroke-width="7.5" fill="none" stroke-linecap="round" filter="url(#soft)"/>
     '''
-    return svg_wrap(inner, "#67e8f9", "#164e63")
+    return svg_wrap(inner, "cleanser", "#d946ef", "#3b82f6")
 
 FORMULATION_TYPES = [
     {"id": "serum", "label": "세럼", "svg": icon_serum()},
@@ -664,20 +674,20 @@ def render_donut_html(df):
     legend_items = "".join(
         f'<div style="display:flex;align-items:center;gap:6px;margin-right:16px;margin-bottom:6px;">'
         f'<span style="width:10px;height:10px;border-radius:3px;background:{phase_color[p]};display:inline-block;"></span>'
-        f'<span style="font-size:11.5px;color:#475569;font-weight:600;">{p}</span></div>'
+        f'<span style="font-size:11.5px;color:#cbd5e1;font-weight:600;">{p}</span></div>'
         for p in phases
     )
 
     return f'''
-    <div id="donut-viewport" style="width:100%; height:520px; overflow:hidden; position:relative; touch-action:none; cursor:grab; border-radius:16px; background:rgba(255,255,255,0.3);">
+    <div id="donut-viewport" style="width:100%; height:520px; overflow:hidden; position:relative; touch-action:none; cursor:grab; border-radius:16px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08);">
       <div id="donut-zoomable" style="position:absolute; left:0; top:0; width:100%; height:100%;
            display:flex; align-items:center; justify-content:center; gap:24px; flex-wrap:wrap;
            transform-origin:0 0; will-change:transform; font-family:Inter,sans-serif;">
         <svg viewBox="0 0 440 440" width="410" height="410">
           {segs}
           {labels}
-          <text x="220" y="210" text-anchor="middle" font-size="11" fill="#94a3b8" font-family="Inter,sans-serif" font-weight="600">TOTAL COST</text>
-          <text x="220" y="238" text-anchor="middle" font-size="20" font-weight="700" fill="#0F172A" font-family="Space Grotesk,sans-serif">{total_cost:,.0f}원</text>
+          <text x="220" y="210" text-anchor="middle" font-size="11" fill="#a78bfa" font-family="Inter,sans-serif" font-weight="600">TOTAL COST</text>
+          <text x="220" y="238" text-anchor="middle" font-size="20" font-weight="700" fill="#ffffff" font-family="Space Grotesk,sans-serif">{total_cost:,.0f}원</text>
         </svg>
         <div style="display:flex; flex-wrap:wrap; max-width:200px;">{legend_items}</div>
       </div>
@@ -690,7 +700,7 @@ def render_donut_html(df):
     </div>
     <style>
       .cfa-seg {{ transition: opacity .18s, filter .18s; cursor:pointer; }}
-      .cfa-seg:hover {{ opacity:1 !important; filter: drop-shadow(0 0 10px rgba(37,99,235,0.6)); }}
+      .cfa-seg:hover {{ opacity:1 !important; filter: drop-shadow(0 0 10px rgba(6,182,212,0.65)); }}
     </style>
     <script>
       function showTip(evt, text) {{
