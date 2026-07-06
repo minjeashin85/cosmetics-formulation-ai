@@ -127,6 +127,36 @@ html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif; }
 .stApp { background: #080415; color: #f8fafc; }
 iframe { border: none !important; background: transparent !important; }
 
+/* 컬럼 및 컨테이너 글라스모피즘 스타일링 (빈 박스 제거 기법) */
+div[data-testid="column"]:has(.cfa-step0-marker),
+div[data-testid="column"]:has(.cfa-step2-marker),
+[data-testid="stVerticalBlockBorderWrapper"]:has(.cfa-step2-full-marker),
+div[data-testid="vertical-block"]:has(.cfa-step2-full-marker) {
+    position: relative;
+    border-radius: 24px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.01)) !important;
+    backdrop-filter: blur(30px) saturate(220%) !important;
+    -webkit-backdrop-filter: blur(30px) saturate(220%) !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.55), inset 0 1px 1px rgba(255,255,255,0.25), inset 0 -1px 8px rgba(255,255,255,0.05) !important;
+    padding: 28px 24px !important;
+    box-sizing: border-box !important;
+    margin-bottom: 20px !important;
+}
+div[data-testid="column"]:has(.cfa-step0-marker)::before,
+div[data-testid="column"]:has(.cfa-step2-marker)::before,
+[data-testid="stVerticalBlockBorderWrapper"]:has(.cfa-step2-full-marker)::before,
+div[data-testid="vertical-block"]:has(.cfa-step2-full-marker)::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 10%;
+    right: 10%;
+    height: 1.5px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+}
+
+
 /* 배경 장식 애니메이션 블롭 - Deep Space Anti-Gravity Chamber */
 .cfa-blob { position: fixed; border-radius: 50%; filter: blur(140px); opacity: 0.28; z-index: -1; pointer-events:none; }
 .cfa-blob1 { width: 550px; height: 550px; background: radial-gradient(circle, #d946ef, transparent 72%); top: -180px; left: -120px; animation: floatA 24s ease-in-out infinite; }
@@ -962,7 +992,7 @@ if st.session_state.step >= 1:
 if st.session_state.step == 0:
     col = st.columns([1, 2, 1])[1]
     with col:
-        st.markdown('<div class="liquid-glass">', unsafe_allow_html=True)
+        st.markdown('<div class="cfa-step0-marker"></div>', unsafe_allow_html=True)
         st.markdown("### 🔑 Gemini API 키 설정")
         st.caption("이 웹앱은 배합 설계 및 이미지 분석에 Google Gemini API를 사용합니다.")
         st.markdown("[👉 Google AI Studio에서 무료 API 키 발급받기](https://aistudio.google.com/apikey)")
@@ -978,7 +1008,6 @@ if st.session_state.step == 0:
                 st.rerun()
             else:
                 st.error("올바른 API 키를 입력해 주세요")
-        st.markdown('</div>', unsafe_allow_html=True)
 
 # ------------------------------------------------------------------
 # STEP 1: 제형 선택
@@ -1010,7 +1039,7 @@ elif st.session_state.step == 2:
     col_l, col_r = st.columns([1.2, 1])
     
     with col_l:
-        st.markdown('<div class="liquid-glass">', unsafe_allow_html=True)
+        st.markdown('<div class="cfa-step2-marker"></div>', unsafe_allow_html=True)
         st.markdown("#### 1. 기존 제품 라벨 이미지 업로드 (선택)")
         st.write("이미지의 성분표 부분만 드래그하여 정확하게 지정하면, AI가 성분을 완벽히 파악해 맞춤 배합에 반영합니다.")
         uploaded = st.file_uploader("라벨 이미지 업로드 (10MB 이하)", type=["png", "jpg", "jpeg"], key="label_file_uploader")
@@ -1027,10 +1056,9 @@ elif st.session_state.step == 2:
                     aspect_ratio=None, return_type="image"
                 )
                 st.session_state.label_original = orig_img
-        st.markdown('</div>', unsafe_allow_html=True)
         
     with col_r:
-        st.markdown('<div class="liquid-glass" style="height: 100%;">', unsafe_allow_html=True)
+        st.markdown('<div class="cfa-step2-marker"></div>', unsafe_allow_html=True)
         st.markdown("#### 2. 배합 설계 시작")
         if cropped_img is not None:
             st.write("선택된 성분표 크롭 영역:")
@@ -1059,7 +1087,6 @@ elif st.session_state.step == 2:
             st.write("업로드된 라벨이 없습니다. 원료 DB에 있는 성분들을 활용하여 **인공지능의 신규 배합 설계**를 바로 시작합니다.")
             
         st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
 
     # ------------------------------------------------------------------
     # 테스트용 샘플 라벨 이미지 및 텍스트 제공 (확인 유틸리티)
@@ -1080,58 +1107,58 @@ elif st.session_state.step == 2:
     # ------------------------------------------------------------------
     # 라벨 이미지 영역 지정 시 text 보여주고 수정 가능하게 (수정 가능 성분 텍스트 영역)
     # ------------------------------------------------------------------
-    st.markdown('<div class="liquid-glass" style="margin-top: 16px;">', unsafe_allow_html=True)
-    st.markdown("#### 📝 반영할 전성분 리스트 (직접 수정 · 추가 · 삭제 가능)")
-    st.write("라벨 이미지에서 성분을 추출하거나 직접 입력하면 여기에 표시되며, 자유롭게 성분을 추가하거나 삭제하실 수 있습니다.")
-    
-    ingredients_txt = st.text_area(
-        "배합의 기본 뼈대가 될 성분 리스트 (쉼표로 구분)",
-        value=st.session_state.label_ingredients or "",
-        placeholder="예: 정제수, 글리세린, 부틸렌글라이콜, 나이아신아마이드 (또는 라벨 이미지를 올려 추출해 주세요)",
-        height=120,
-        label_visibility="collapsed",
-        key="ingredients_text_editor"
-    )
-    st.session_state.label_ingredients = ingredients_txt  # Sync back to state
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # "AI 배합 실행" 버튼 (번개 표시 대신 AI 관련 🤖 아이콘, 화장품 관련 로딩 🧴 애니메이션)
-    if st.button("🤖 AI 배합 실행", type="primary", use_container_width=True):
-        placeholder = st.empty()
-        placeholder.markdown('''
-        <div class="liquid-glass cfa-loading-box">
-          <div class="cfa-ring-wrap">
-            <div class="cfa-ring"></div><div class="cfa-ring d2"></div>
-            <div class="cfa-core"></div><div class="cfa-core-inner">🧴</div>
-          </div>
-          <div class="cfa-loading-label">Gemini AI · SKINCARE FORMULATION</div>
-          <div class="cfa-loading-msg">원료 상용성 분석 및 맞춤형 스킨케어 배합 구성 중...</div>
-        </div>
-        ''', unsafe_allow_html=True)
-        try:
-            # 최종 수동 편집된 원료가 있으면 DB에 다시 병합
-            if ingredients_txt.strip():
-                merge_extracted_into_db(ingredients_txt)
+    with st.container():
+        st.markdown('<div class="cfa-step2-full-marker"></div>', unsafe_allow_html=True)
+        st.markdown("#### 📝 반영할 전성분 리스트 (직접 수정 · 추가 · 삭제 가능)")
+        st.write("라벨 이미지에서 성분을 추출하거나 직접 입력하면 여기에 표시되며, 자유롭게 성분을 추가하거나 삭제하실 수 있습니다.")
+        
+        ingredients_txt = st.text_area(
+            "배합의 기본 뼈대가 될 성분 리스트 (쉼표로 구분)",
+            value=st.session_state.label_ingredients or "",
+            placeholder="예: 정제수, 글리세린, 부틸렌글라이콜, 나이아신아마이드 (또는 라벨 이미지를 올려 추출해 주세요)",
+            height=120,
+            label_visibility="collapsed",
+            key="ingredients_text_editor"
+        )
+        st.session_state.label_ingredients = ingredients_txt  # Sync back to state
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # "AI 배합 실행" 버튼 (번개 표시 대신 AI 관련 🤖 아이콘, 화장품 관련 로딩 🧴 애니메이션)
+        if st.button("🤖 AI 배합 실행", type="primary", use_container_width=True):
+            placeholder = st.empty()
+            placeholder.markdown('''
+            <div class="liquid-glass cfa-loading-box">
+              <div class="cfa-ring-wrap">
+                <div class="cfa-ring"></div><div class="cfa-ring d2"></div>
+                <div class="cfa-core"></div><div class="cfa-core-inner">🧴</div>
+              </div>
+              <div class="cfa-loading-label">Gemini AI · SKINCARE FORMULATION</div>
+              <div class="cfa-loading-msg">원료 상용성 분석 및 맞춤형 스킨케어 배합 구성 중...</div>
+            </div>
+            ''', unsafe_allow_html=True)
+            try:
+                # 최종 수동 편집된 원료가 있으면 DB에 다시 병합
+                if ingredients_txt.strip():
+                    merge_extracted_into_db(ingredients_txt)
 
-            # 배합 생성
-            raw = generate_formulation(ftype, st.session_state.db, ingredients_txt.strip() or None)
-            st.session_state.raw_formulation = raw
-            
-            df = normalize_and_cost(raw, st.session_state.db)
-            st.session_state.formulation = df
-            
-            st.session_state.step = 3
-            placeholder.empty()
-            st.rerun()
-        except Exception as e:
-            placeholder.empty()
-            import traceback
-            st.error(f"처방 설계에 실패했습니다: {e}")
-            with st.expander("🛠️ 상세 에러 로그 (디버깅용)"):
-                st.code(traceback.format_exc())
-            st.caption("Gemini API 키 상태와 쿼리 한도를 다시 한번 점검해 주세요.")
-    st.markdown('</div>', unsafe_allow_html=True)
+                # 배합 생성
+                raw = generate_formulation(ftype, st.session_state.db, ingredients_txt.strip() or None)
+                st.session_state.raw_formulation = raw
+                
+                df = normalize_and_cost(raw, st.session_state.db)
+                st.session_state.formulation = df
+                
+                st.session_state.step = 3
+                placeholder.empty()
+                st.rerun()
+            except Exception as e:
+                placeholder.empty()
+                import traceback
+                st.error(f"처방 설계에 실패했습니다: {e}")
+                with st.expander("🛠️ 상세 에러 로그 (디버깅용)"):
+                    st.code(traceback.format_exc())
+                st.caption("Gemini API 키 상태와 쿼리 한도를 다시 한번 점검해 주세요.")
 
 # ------------------------------------------------------------------
 # STEP 3: 설계 결과 대시보드
