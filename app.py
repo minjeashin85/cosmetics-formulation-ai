@@ -131,7 +131,7 @@ components.html("""
       <defs>
         <filter id="apple-liquid-magnifier" x="-50%" y="-50%" width="200%" height="200%">
           <feImage id="svg-bump-map" result="bumpMap"/>
-          <feDisplacementMap in="SourceGraphic" in2="bumpMap" scale="35" xChannelSelector="R" yChannelSelector="G"/>
+          <feDisplacementMap in="SourceGraphic" in2="bumpMap" scale="38" xChannelSelector="R" yChannelSelector="G"/>
         </filter>
       </defs>
     </svg>
@@ -155,28 +155,29 @@ components.html("""
         backdrop-filter: url(#apple-liquid-magnifier);
         -webkit-backdrop-filter: url(#apple-liquid-magnifier);
         background: 
-            radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 50%),
+            radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0) 55%),
             radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0) 60%, rgba(255, 255, 255, 0.08) 100%);
         box-shadow: 
             inset 0 4px 8px rgba(255, 255, 255, 0.5),
-            inset 0 -4px 8px rgba(0, 0, 0, 0.08),
-            0 8px 20px rgba(0, 0, 0, 0.1);
-        transition: background 0.2s, box-shadow 0.2s;
+            inset 0 -4px 8px rgba(0, 0, 0, 0.15),
+            0 8px 24px rgba(0, 0, 0, 0.3);
+        transition: background 0.25s ease, box-shadow 0.25s ease;
         will-change: left, top, transform;
     }
     #apple-glass-lens.glowing {
         background: 
-            radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0) 60%),
-            radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.2) 100%);
+            radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0) 60%),
+            radial-gradient(circle at 50% 50%, rgba(255, 0, 160, 0.15) 0%, rgba(255, 255, 255, 0.25) 100%);
         box-shadow: 
-            inset 0 4px 10px rgba(255, 255, 255, 0.7),
-            inset 0 -4px 10px rgba(255, 255, 255, 0.3),
-            0 0 25px rgba(255, 255, 255, 0.45),
-            0 8px 20px rgba(0, 0, 0, 0.08);
+            inset 0 4px 12px rgba(255, 255, 255, 0.8),
+            inset 0 -4px 12px rgba(255, 0, 160, 0.4),
+            0 0 30px rgba(255, 255, 255, 0.5),
+            0 0 55px rgba(255, 0, 160, 0.45),
+            0 10px 24px rgba(0, 0, 0, 0.2);
     }
     .liquid-hover-glow {
-        filter: brightness(1.15) drop-shadow(0 0 8px rgba(255, 255, 255, 0.3)) !important;
-        transition: filter 0.2s !important;
+        filter: brightness(1.25) drop-shadow(0 0 12px rgba(255, 255, 255, 0.4)) !important;
+        transition: filter 0.25s ease !important;
     }
   `;
   doc.head.appendChild(styleEl);
@@ -204,7 +205,7 @@ components.html("""
           let g_val = 128;
           
           if (r < 1.0) {
-              const factor = (1.0 - r * r) * r * 0.55;
+              const factor = (1.0 - r * r) * r * 0.58;
               r_val = 128 - nx * factor * 127;
               g_val = 128 - ny * factor * 127;
           }
@@ -236,7 +237,11 @@ components.html("""
 
     const hoveredEl = doc.elementFromPoint(e.clientX, e.clientY);
     if (hoveredEl) {
-      const clickable = hoveredEl.closest('a') || hoveredEl.closest('button') || hoveredEl.closest('[role="button"]') || win.getComputedStyle(hoveredEl).cursor === 'pointer';
+      const clickable = hoveredEl.closest('a') || 
+                        hoveredEl.closest('button') || 
+                        hoveredEl.closest('[role="button"]') || 
+                        hoveredEl.closest('.ant-btn') ||
+                        win.getComputedStyle(hoveredEl).cursor === 'pointer';
       if (clickable) {
         const target = clickable === true ? hoveredEl : clickable;
         lens.classList.add('glowing');
@@ -278,7 +283,7 @@ components.html("""
       lens.style.left = `${currentX}px`;
       lens.style.top = `${currentY}px`;
       
-      const stretch = Math.min(speed * 0.06, 0.25); 
+      const stretch = Math.min(speed * 0.06, 0.22); 
       lens.style.transform = `translate(-50%, -50%) rotate(${angle}rad) scale(${1 + stretch}, ${1 - stretch * 0.4})`;
       
       requestAnimationFrame(animateLens);
@@ -296,7 +301,13 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif; }
-.stApp { background: #ffffff; color: #0f172a; }
+.stApp {
+    background: 
+        radial-gradient(circle at 15% 115%, #ff00a0 0%, rgba(255, 0, 160, 0.4) 45%, rgba(0, 0, 0, 0) 80%),
+        radial-gradient(circle at 85% 120%, #6e123a 0%, rgba(110, 18, 58, 0.3) 40%, rgba(0, 0, 0, 0) 70%),
+        #070506 !important;
+    color: #ffffff;
+}
 iframe { border: none !important; background: transparent !important; }
 
 /* 컬럼 및 컨테이너 글라스모피즘 스타일링 (빈 박스 제거 기법) */
@@ -310,11 +321,11 @@ div[class*="stColumn"]:has(.cfa-step2-marker),
 div[data-testid="vertical-block"]:has(.cfa-step2-full-marker) {
     position: relative;
     border-radius: 24px;
-    background: linear-gradient(135deg, rgba(255,255,255,0.7), rgba(255,255,255,0.35)) !important;
+    background: linear-gradient(135deg, rgba(25,15,20,0.65), rgba(15,10,12,0.35)) !important;
     backdrop-filter: blur(30px) saturate(220%) !important;
     -webkit-backdrop-filter: blur(30px) saturate(220%) !important;
-    border: 1px solid rgba(0,0,0,0.06) !important;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.06), inset 0 1px 1px rgba(255,255,255,0.8), inset 0 -1px 8px rgba(0,0,0,0.01) !important;
+    border: 1px solid rgba(255,0,160,0.12) !important;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.05), inset 0 -1px 8px rgba(255,0,160,0.05) !important;
     padding: 28px 24px !important;
     box-sizing: border-box !important;
     margin-bottom: 20px !important;
@@ -333,34 +344,34 @@ div[data-testid="vertical-block"]:has(.cfa-step2-full-marker)::before {
     left: 10%;
     right: 10%;
     height: 1.5px;
-    background: linear-gradient(90deg, transparent, rgba(0,0,0,0.05), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255,0,160,0.15), transparent);
 }
 
 /* 헤더 & 네비게이션 */
-.cfa-header-row { display:flex; align-items:center; justify-content:space-between; padding: 16px 8px; position:relative; z-index:2; border-bottom: 1px solid rgba(0, 0, 0, 0.05); }
+.cfa-header-row { display:flex; align-items:center; justify-content:space-between; padding: 16px 8px; position:relative; z-index:2; border-bottom: 1px solid rgba(255, 0, 160, 0.1); }
 .cfa-brand { display:flex; align-items:center; gap:16px; }
-.cfa-brand .badge { width:48px; height:48px; border-radius:16px; background: linear-gradient(135deg, #0ea5e9, #3b82f6); display:flex; align-items:center; justify-content:center; font-size:24px; box-shadow: 0 0 20px rgba(6, 182, 212, 0.2); }
-.cfa-brand h1 { font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:700; color:#0f172a; margin:0; line-height:1.1; }
-.cfa-brand p { font-size:11px; color:#4f46e5; letter-spacing:1.8px; text-transform:uppercase; margin:2px 0 0 0; font-weight: 600; }
+.cfa-brand .badge { width:48px; height:48px; border-radius:16px; background: linear-gradient(135deg, #ff00a0, #6e123a); display:flex; align-items:center; justify-content:center; font-size:24px; box-shadow: 0 0 20px rgba(255, 0, 160, 0.3); }
+.cfa-brand h1 { font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:700; color:#ffffff; margin:0; line-height:1.1; }
+.cfa-brand p { font-size:11px; color:#ff00a0; letter-spacing:1.8px; text-transform:uppercase; margin:2px 0 0 0; font-weight: 600; }
 
 /* 단계 표시 인디케이터 (Stepper) - Floating Glass Capsules */
 .cfa-stepper { display: flex; align-items: center; justify-content: center; gap: 16px; margin: 28px 0; font-family: 'Space Grotesk', sans-serif; }
-.cfa-step { display: flex; align-items: center; gap: 8px; padding: 8px 20px; border-radius: 999px; background: rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.05); font-size: 13.5px; font-weight: 600; color: #64748b; transition: all 0.3s; }
-.cfa-step.active { background: linear-gradient(135deg, rgba(6,182,212,0.08), rgba(59,130,246,0.04)); border-color: rgba(6,182,212,0.4); color: #0ea5e9; box-shadow: 0 0 10px rgba(6,182,212,0.15); }
-.cfa-step.done { background: rgba(0,0,0,0.04); border-color: #3b82f6; color: #1d4ed8; }
-.cfa-step-arrow { color: rgba(0,0,0,0.15); font-weight: bold; }
+.cfa-step { display: flex; align-items: center; gap: 8px; padding: 8px 20px; border-radius: 999px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); font-size: 13.5px; font-weight: 600; color: rgba(255,255,255,0.4); transition: all 0.3s; }
+.cfa-step.active { background: linear-gradient(135deg, rgba(255,0,160,0.15), rgba(110,18,58,0.1)); border-color: rgba(255,0,160,0.5); color: #ff00a0; box-shadow: 0 0 15px rgba(255,0,160,0.3); }
+.cfa-step.done { background: rgba(255, 0, 160, 0.08); border-color: #ff00a0; color: #f472b6; }
+.cfa-step-arrow { color: rgba(255,255,255,0.15); font-weight: bold; }
 
 /* 리퀴드 글라스 프리미엄 카드 디자인 - Multi-layered Crystal Glass */
 .liquid-glass {
     position: relative; border-radius: 24px;
-    background: linear-gradient(135deg, rgba(255,255,255,0.7), rgba(255,255,255,0.35));
+    background: linear-gradient(135deg, rgba(25,15,20,0.65), rgba(15,10,12,0.35));
     backdrop-filter: blur(30px) saturate(220%);
     -webkit-backdrop-filter: blur(30px) saturate(220%);
-    border: 1px solid rgba(0,0,0,0.06);
-    box-shadow: 0 20px 50px rgba(0,0,0,0.06), inset 0 1px 1px rgba(255,255,255,0.8), inset 0 -1px 8px rgba(0,0,0,0.01);
+    border: 1px solid rgba(255,0,160,0.12);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.05), inset 0 -1px 8px rgba(255,0,160,0.05);
     overflow: hidden; z-index:1; padding: 24px;
 }
-.liquid-glass::before { content: ""; position: absolute; top:0; left:10%; right:10%; height:1.5px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent); }
+.liquid-glass::before { content: ""; position: absolute; top:0; left:10%; right:10%; height:1.5px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent); }
 
 /* 제형 선택 그리드 및 호버 효과 */
 div[data-testid="column"]:has(.cfa-tile-marker),
@@ -374,35 +385,35 @@ div[data-testid="column"]:has(.cfa-tile-marker):hover .cfa-icon-wrap,
 div[class*="stColumn"]:has(.cfa-tile-marker):hover .cfa-icon-wrap,
 .stColumn:has(.cfa-tile-marker):hover .cfa-icon-wrap {
     transform: scale(1.18) rotate(-4deg) !important;
-    filter: drop-shadow(0 0 25px rgba(6,182,212,0.25)) !important;
+    filter: drop-shadow(0 0 25px rgba(255,0,160,0.35)) !important;
 }
 .cfa-name-pill {
     position: relative; overflow: hidden;
     display:inline-flex; align-items:center; justify-content:center;
     margin-top:14px; padding: 8px 26px; border-radius:999px;
-    background: linear-gradient(135deg, rgba(0,0,0,0.03), rgba(0,0,0,0.01));
+    background: rgba(255,255,255,0.04);
     backdrop-filter: blur(16px);
-    border:1px solid rgba(0,0,0,0.06);
-    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px; color:#334155;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.04), inset 0 1px 1px rgba(255,255,255,0.9);
+    border:1px solid rgba(255,255,255,0.08);
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px; color:rgba(255,255,255,0.8);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2), inset 0 1px 1px rgba(255,255,255,0.05);
     transition: all .35s cubic-bezier(.2,.8,.2,1);
     width: max-content; white-space: nowrap;
 }
 .cfa-name-pill::before {
     content: ""; position:absolute; top:-60%; left:-30%; width:60%; height:220%;
-    background: linear-gradient(120deg, rgba(255,255,255,0.6), transparent 60%);
+    background: linear-gradient(120deg, rgba(255,255,255,0.2), transparent 60%);
     transform: rotate(20deg); pointer-events:none; z-index:2;
 }
 .cfa-name-pill::after {
     content: ""; position:absolute; width:24px; height:24px; border-radius:50%;
-    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.6), rgba(6,182,212,0.05) 70%);
+    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.3), rgba(255,0,160,0.05) 70%);
     top:50%; left:10%;
     animation: cfaDropletA 6s ease-in-out infinite;
     pointer-events:none; z-index:1;
 }
 .cfa-liquid-drop2 {
     content: ""; position:absolute; width:14px; height:14px; border-radius:50%;
-    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.6), rgba(217,70,239,0.05) 70%);
+    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.3), rgba(255,0,160,0.05) 70%);
     top:60%; left:60%;
     animation: cfaDropletB 4s ease-in-out infinite;
     pointer-events:none; z-index:1;
@@ -421,10 +432,10 @@ div[class*="stColumn"]:has(.cfa-tile-marker):hover .cfa-icon-wrap,
 div[data-testid="column"]:has(.cfa-tile-marker):hover .cfa-name-pill,
 div[class*="stColumn"]:has(.cfa-tile-marker):hover .cfa-name-pill,
 .stColumn:has(.cfa-tile-marker):hover .cfa-name-pill {
-    background: linear-gradient(135deg, rgba(14,165,233,0.9), rgba(59,130,246,0.85)) !important;
+    background: linear-gradient(135deg, #ff00a0, #6e123a) !important;
     border-color: rgba(255,255,255,0.3) !important;
     color:#fff !important; transform: translateY(-4px) scale(1.05) !important;
-    box-shadow: 0 12px 28px rgba(14,165,233,0.25), inset 0 1px 1px rgba(255,255,255,0.2) !important;
+    box-shadow: 0 12px 28px rgba(255,0,160,0.35), inset 0 1px 1px rgba(255,255,255,0.2) !important;
 }
 div[data-testid="column"],
 div[class*="stColumn"],
@@ -511,55 +522,55 @@ div[class*="stColumn"]:has(.cfa-tile-marker):hover .cfa-shine-anim,
 /* 로딩 애니메이션 - Glowing Beaker Liquid */
 .cfa-loading-box { padding: 64px 20px; text-align:center; }
 .cfa-ring-wrap { position:relative; width:120px; height:120px; margin:0 auto 28px auto; }
-.cfa-ring { position:absolute; inset:0; border-radius:50%; border:2px solid rgba(6,182,212,0.2); animation: cfaPulse 2.1s ease-out infinite; }
+.cfa-ring { position:absolute; inset:0; border-radius:50%; border:2px solid rgba(255,0,160,0.2); animation: cfaPulse 2.1s ease-out infinite; }
 .cfa-ring.d2 { animation-delay: 1.05s; }
 @keyframes cfaPulse { 0%{transform:scale(0.8);opacity:0.8;} 80%{transform:scale(1.3);opacity:0;} 100%{opacity:0;} }
-.cfa-core { position:absolute; inset:22px; border-radius:50%; background: conic-gradient(from 0deg,#0ea5e9,#3b82f6,#818cf8,#0ea5e9); animation: cfaSpin 2.5s linear infinite; }
+.cfa-core { position:absolute; inset:22px; border-radius:50%; background: conic-gradient(from 0deg,#ff00a0,#6e123a,#818cf8,#ff00a0); animation: cfaSpin 2.5s linear infinite; }
 @keyframes cfaSpin { to { transform:rotate(360deg); } }
-.cfa-core-inner { position:absolute; inset:10px; border-radius:50%; background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); display:flex; align-items:center; justify-content:center; font-size:28px; border: 1px solid rgba(0,0,0,0.06); }
-.cfa-loading-label { font-size:12px; letter-spacing:3px; text-transform:uppercase; color:#4f46e5; font-weight:600; margin-bottom:8px; }
-.cfa-loading-msg { font-size:16px; color:#0f172a; font-weight:500; }
+.cfa-core-inner { position:absolute; inset:10px; border-radius:50%; background: rgba(15,10,12,0.9); backdrop-filter: blur(10px); display:flex; align-items:center; justify-content:center; font-size:28px; border: 1px solid rgba(255,255,255,0.06); }
+.cfa-loading-label { font-size:12px; letter-spacing:3px; text-transform:uppercase; color:#ff00a0; font-weight:600; margin-bottom:8px; }
+.cfa-loading-msg { font-size:16px; color:#ffffff; font-weight:500; }
 
 /* 대시보드 요약 요소를 위한 카드 */
 .cfa-summary { padding: 22px 24px; text-align:left; }
-.cfa-summary .label { font-size:11px; letter-spacing:1.6px; text-transform:uppercase; color:#64748b; font-weight:600; }
-.cfa-summary .value { font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:700; color:#0f172a; margin-top:6px; }
-.cfa-summary.accent { background: linear-gradient(160deg, rgba(6,182,212,0.08), rgba(59,130,246,0.04)); border-color: rgba(6,182,212,0.2); }
-.cfa-summary.accent .value { color:#0ea5e9; }
+.cfa-summary .label { font-size:11px; letter-spacing:1.6px; text-transform:uppercase; color:rgba(255,255,255,0.5); font-weight:600; }
+.cfa-summary .value { font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:700; color:#ffffff; margin-top:6px; }
+.cfa-summary.accent { background: linear-gradient(160deg, rgba(255,0,160,0.12), rgba(110,18,58,0.04)); border-color: rgba(255,0,160,0.3); }
+.cfa-summary.accent .value { color:#ff00a0; }
 
 /* 처방 테이블 - Light Glass Design */
 .cfa-table-wrap { padding: 4px; overflow-x: auto; }
 .cfa-table { width:100%; border-collapse:collapse; font-size:14px; min-width: 600px; }
-.cfa-table thead th { text-align:left; padding:14px 18px; font-size:11px; letter-spacing:1.2px; text-transform:uppercase; color:#475569; font-weight:700; border-bottom:1px solid rgba(0,0,0,0.08); }
+.cfa-table thead th { text-align:left; padding:14px 18px; font-size:11px; letter-spacing:1.2px; text-transform:uppercase; color:rgba(255,255,255,0.6); font-weight:700; border-bottom:1px solid rgba(255,255,255,0.12); }
 .cfa-table thead th.num { text-align:right; }
-.cfa-table tbody td { padding:13px 18px; color:#334155; border-bottom:1px solid rgba(0,0,0,0.04); }
+.cfa-table tbody td { padding:13px 18px; color:rgba(255,255,255,0.85); border-bottom:1px solid rgba(255,255,255,0.06); }
 .cfa-table tbody td.num { text-align:right; font-variant-numeric: tabular-nums; }
-.cfa-table tbody tr:hover td { background: rgba(6, 182, 212, 0.05); }
-.cfa-table td.phase { color:#0284c7; font-weight:700; font-size:12.5px; white-space:nowrap; }
-.cfa-table td.name { color:#0f172a; font-weight:600; }
-.cfa-table td.fn { color:#475569; font-size:12.5px; }
-.cfa-table td.dbtag { font-size:10px; color:#d97706; font-weight:600; margin-top:2px; }
-.cfa-table tfoot td { padding:16px 18px; font-weight:700; color:#0f172a; border-top:2px solid rgba(6, 182, 212, 0.2); background: rgba(6, 182, 212, 0.03); }
+.cfa-table tbody tr:hover td { background: rgba(255, 0, 160, 0.08); }
+.cfa-table td.phase { color:#ff00a0; font-weight:700; font-size:12.5px; white-space:nowrap; }
+.cfa-table td.name { color:#ffffff; font-weight:600; }
+.cfa-table td.fn { color:rgba(255,255,255,0.6); font-size:12.5px; }
+.cfa-table td.dbtag { font-size:10px; color:#f59e0b; font-weight:600; margin-top:2px; }
+.cfa-table tfoot td { padding:16px 18px; font-weight:700; color:#ffffff; border-top:2px solid rgba(255, 0, 160, 0.3); background: rgba(255, 0, 160, 0.06); }
 
 /* 스트림릿 기본 컴포넌트 커스텀 오버라이드 (라이트 크리스탈 스타일) */
-[data-testid="stExpander"] { background: rgba(255,255,255,0.75)!important; backdrop-filter: blur(25px) saturate(180%); border-radius: 20px!important; border: 1px solid rgba(0,0,0,0.08)!important; }
+[data-testid="stExpander"] { background: rgba(15,10,12,0.65)!important; backdrop-filter: blur(25px) saturate(180%); border-radius: 20px!important; border: 1px solid rgba(255,0,160,0.12)!important; }
 .stButton>button, [data-testid="stDownloadButton"] button {
-    border-radius: 999px!important; background: rgba(255,255,255,0.85)!important;
-    backdrop-filter: blur(12px); border: 1px solid rgba(0,0,0,0.08)!important;
-    color:#0f172a!important; font-weight:600!important;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.9); transition: all .25s ease-out;
+    border-radius: 999px!important; background: rgba(255,255,255,0.08)!important;
+    backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.12)!important;
+    color:#ffffff!important; font-weight:600!important;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05); transition: all .25s ease-out;
 }
-.stButton>button:hover, [data-testid="stDownloadButton"] button:hover { background: rgba(6,182,212,0.08)!important; border-color: rgba(6,182,212,0.3)!important; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(6,182,212,0.1); }
-button[kind="primary"] { background: linear-gradient(135deg, #0ea5e9, #3b82f6)!important; border: 1px solid rgba(255,255,255,0.15)!important; color:#fff!important; box-shadow: 0 4px 15px rgba(14,165,233,0.25)!important; }
-button[kind="primary"]:hover { filter: brightness(1.05); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(14,165,233,0.35)!important; }
-div[data-baseweb="input"], div[data-baseweb="base-input"] { background: rgba(255,255,255,0.85)!important; backdrop-filter: blur(12px); border-radius: 14px!important; border: 1px solid rgba(0,0,0,0.08)!important; color:#0f172a!important; }
-[data-testid="stFileUploaderDropzone"] { background: rgba(0,0,0,0.01)!important; backdrop-filter: blur(18px) saturate(180%); border-radius: 20px!important; border: 1px dashed rgba(0,0,0,0.1)!important; }
-div[data-testid="stMarkdownContainer"] p, div[data-testid="stMarkdownContainer"] li { color: #334155; }
-div[data-testid="stMarkdownContainer"] h1, div[data-testid="stMarkdownContainer"] h2, div[data-testid="stMarkdownContainer"] h3, div[data-testid="stMarkdownContainer"] h4 { color: #0f172a; }
+.stButton>button:hover, [data-testid="stDownloadButton"] button:hover { background: rgba(255,0,160,0.12)!important; border-color: rgba(255,0,160,0.45)!important; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(255,0,160,0.25); }
+button[kind="primary"] { background: linear-gradient(135deg, #ff00a0, #6e123a)!important; border: 1px solid rgba(255,255,255,0.15)!important; color:#fff!important; box-shadow: 0 4px 15px rgba(255,0,160,0.25)!important; }
+button[kind="primary"]:hover { filter: brightness(1.05); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255,0,160,0.35)!important; }
+div[data-baseweb="input"], div[data-baseweb="base-input"] { background: rgba(0,0,0,0.35)!important; backdrop-filter: blur(12px); border-radius: 14px!important; border: 1px solid rgba(255,0,160,0.2)!important; color:#ffffff!important; }
+[data-testid="stFileUploaderDropzone"] { background: rgba(255,255,255,0.02)!important; backdrop-filter: blur(18px) saturate(180%); border-radius: 20px!important; border: 1px dashed rgba(255,255,255,0.15)!important; }
+div[data-testid="stMarkdownContainer"] p, div[data-testid="stMarkdownContainer"] li { color: rgba(255,255,255,0.85); }
+div[data-testid="stMarkdownContainer"] h1, div[data-testid="stMarkdownContainer"] h2, div[data-testid="stMarkdownContainer"] h3, div[data-testid="stMarkdownContainer"] h4 { color: #ffffff; }
 
 /* 텍스트 렌더링 카드 */
-.report-card { background: rgba(255,255,255,0.55); border-radius: 16px; border: 1px solid rgba(0,0,0,0.06); padding: 20px; line-height: 1.6; color:#334155; }
-.report-card h4 { font-family:'Space Grotesk',sans-serif; color: #0f172a; margin-top: 0; }
+.report-card { background: rgba(255,255,255,0.03); border-radius: 16px; border: 1px solid rgba(255,0,160,0.12); padding: 20px; line-height: 1.6; color:rgba(255,255,255,0.85); }
+.report-card h4 { font-family:'Space Grotesk',sans-serif; color: #ffffff; margin-top: 0; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -1016,20 +1027,20 @@ def render_donut_html(df):
     legend_items = "".join(
         f'<div style="display:flex;align-items:center;gap:6px;margin-right:16px;margin-bottom:6px;">'
         f'<span style="width:10px;height:10px;border-radius:3px;background:{phase_color[p]};display:inline-block;"></span>'
-        f'<span style="font-size:11.5px;color:#475569;font-weight:600;">{p}</span></div>'
+        f'<span style="font-size:11.5px;color:rgba(255,255,255,0.7);font-weight:600;">{p}</span></div>'
         for p in phases
     )
 
     return f'''
-    <div id="donut-viewport" style="width:100%; height:520px; overflow:hidden; position:relative; touch-action:none; cursor:grab; border-radius:16px; background:rgba(0,0,0,0.02); border:1px solid rgba(0,0,0,0.05);">
+    <div id="donut-viewport" style="width:100%; height:520px; overflow:hidden; position:relative; touch-action:none; cursor:grab; border-radius:16px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08);">
       <div id="donut-zoomable" style="position:absolute; left:0; top:0; width:100%; height:100%;
            display:flex; align-items:center; justify-content:center; gap:24px; flex-wrap:wrap;
            transform-origin:0 0; will-change:transform; font-family:Inter,sans-serif;">
         <svg viewBox="0 0 440 440" width="410" height="410">
           {segs}
           {labels}
-          <text x="220" y="210" text-anchor="middle" font-size="11" fill="#4f46e5" font-family="Inter,sans-serif" font-weight="600">TOTAL COST</text>
-          <text x="220" y="238" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a" font-family="Space Grotesk,sans-serif">{total_cost:,.0f}원</text>
+          <text x="220" y="210" text-anchor="middle" font-size="11" fill="#ff00a0" font-family="Inter,sans-serif" font-weight="600">TOTAL COST</text>
+          <text x="220" y="238" text-anchor="middle" font-size="20" font-weight="700" fill="#ffffff" font-family="Space Grotesk,sans-serif">{total_cost:,.0f}원</text>
         </svg>
         <div style="display:flex; flex-wrap:wrap; max-width:200px;">{legend_items}</div>
       </div>
@@ -1037,7 +1048,7 @@ def render_donut_html(df):
         background:rgba(15,23,42,0.95); color:#fff; padding:10px 14px; border-radius:12px;
         font-size:12px; white-space:nowrap; z-index:10; box-shadow:0 10px 25px rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.15);"></div>
     </div>
-    <div style="text-align:center; font-size:11px; color:#64748b; margin-top:8px; font-weight:500;">
+    <div style="text-align:center; font-size:11px; color:rgba(255,255,255,0.45); margin-top:8px; font-weight:500;">
       🔍 마우스 휠 = 마우스 위치 기준 확대/축소 · 드래그 = 위치 이동 · 더블클릭 = 뷰 리셋
     </div>
     <style>
