@@ -148,7 +148,7 @@ components.html("""
       canvas.style.width = '100vw';
       canvas.style.height = '100vh';
       canvas.style.pointerEvents = 'none';
-      canvas.style.zIndex = '0';
+      canvas.style.zIndex = '-9999';
       canvas.style.display = 'block';
       doc.body.appendChild(canvas);
     }
@@ -300,7 +300,7 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif; }
-.stApp { background: #ffffff; color: #0f172a; }
+.stApp { background: transparent !important; color: #0f172a; }
 iframe { border: none !important; background: transparent !important; }
 
 /* 컬럼 및 컨테이너 글라스모피즘 스타일링 (빈 박스 제거 기법) */
