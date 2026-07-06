@@ -217,13 +217,32 @@ html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif; }
     color:#fff; transform: translateY(-4px) scale(1.05);
     box-shadow: 0 16px 36px rgba(217,70,239,0.35), inset 0 1px 1px rgba(255,255,255,0.3);
 }
-.cfa-type-grid div[data-testid="column"] .element-container:has(.stButton) {
-    position: absolute; inset: 0; z-index: 5; margin: 0 !important; height: 100%; width: 100%;
+div[data-testid="column"]:has(.cfa-tile-marker) {
+    position: relative !important;
 }
-.cfa-type-grid div[data-testid="column"] .stButton,
-.cfa-type-grid div[data-testid="column"] .stButton > button {
-    width: 100% !important; height: 100% !important; opacity: 0 !important; cursor: pointer; margin: 0 !important; padding: 0 !important; border: none !important;
-    background: transparent !important; box-shadow: none !important; border-radius: 24px;
+div[data-testid="column"]:has(.cfa-tile-marker) div:has(> .stButton),
+div[data-testid="column"]:has(.cfa-tile-marker) [data-testid="element-container"]:has(.stButton),
+div[data-testid="column"]:has(.cfa-tile-marker) .element-container:has(.stButton) {
+    position: absolute !important;
+    inset: 0 !important;
+    z-index: 5 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: 100% !important;
+    width: 100% !important;
+}
+div[data-testid="column"]:has(.cfa-tile-marker) .stButton,
+div[data-testid="column"]:has(.cfa-tile-marker) .stButton > button {
+    width: 100% !important;
+    height: 100% !important;
+    opacity: 0 !important;
+    cursor: pointer !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border-radius: 24px !important;
 }
 
 /* SVG 아이콘 내부 부품 호버 애니메이션 */
@@ -935,7 +954,8 @@ elif st.session_state.step == 1:
     for i, t in enumerate(FORMULATION_TYPES):
         with cols[i % 3]:
             st.markdown(f'''
-            <div class="cfa-tile">
+            <div class="liquid-glass cfa-tile">
+              <div class="cfa-tile-marker"></div>
               <div class="cfa-icon-wrap">{t["svg"]}</div>
               <div class="cfa-name-pill">{t["label"]}<span class="cfa-liquid-drop2"></span></div>
             </div>
