@@ -261,7 +261,9 @@ div[data-testid="column"]:has(.cfa-tile-marker) .stVerticalBlock {
     height: 100% !important;
     width: 100% !important;
 }
+div[data-testid="column"]:has(.cfa-tile-marker) [data-testid="stElementContainer"]:has(.stButton),
 div[data-testid="column"]:has(.cfa-tile-marker) [data-testid="element-container"]:has(.stButton),
+div[data-testid="column"]:has(.cfa-tile-marker) .stElementContainer:has(.stButton),
 div[data-testid="column"]:has(.cfa-tile-marker) .element-container:has(.stButton) {
     position: absolute !important;
     inset: 0 !important;
@@ -512,6 +514,8 @@ def validate_api_key(api_key: str, model_name: str = "gemini-2.5-flash") -> tupl
             return False, "올바르지 않은 API 키입니다. Google AI Studio에서 발급받은 키인지 확인해 주세요."
         elif "quota" in err_msg.lower() or "limit" in err_msg.lower() or "429" in err_msg:
             return False, "API 호출 할당량이 초과되었습니다."
+        elif "503" in err_msg or "unavailable" in err_msg.lower() or "timeout" in err_msg.lower() or "connection" in err_msg.lower() or "500" in err_msg:
+            return True, "warning:Gemini API 서버가 일시적으로 불안정합니다 (503 Unavailable 등). 키는 올바른 것으로 추정되므로 일단 진행합니다."
         else:
             return False, f"API 키 검증 중 오류가 발생했습니다: {err_msg}"
 
@@ -953,7 +957,10 @@ if st.session_state.step >= 1:
                         is_valid, err_msg = validate_api_key(cleaned_settings_key, st.session_state.model_name)
                     if is_valid:
                         st.session_state.api_key = cleaned_settings_key
-                        st.success("API 키가 변경되었습니다!")
+                        if err_msg.startswith("warning:"):
+                            st.session_state.api_key_warning = err_msg.replace("warning:", "")
+                        else:
+                            st.success("API 키가 변경되었습니다!")
                         st.rerun()
                     else:
                         st.error(f"❌ API 키 검증 실패: {err_msg}")
@@ -1050,6 +1057,8 @@ if st.session_state.step == 0:
                     st.session_state.api_key = cleaned_key
                     st.session_state.model_name = selected_model
                     st.session_state.step = 1
+                    if err_msg.startswith("warning:"):
+                        st.session_state.api_key_warning = err_msg.replace("warning:", "")
                     st.rerun()
                 else:
                     st.error(f"❌ API 키 검증 실패: {err_msg}")
@@ -1062,6 +1071,10 @@ if st.session_state.step == 0:
 elif st.session_state.step == 1:
     st.caption("STEP 1")
     st.subheader("설계하고자 하는 화장품 제형을 선택해 주세요")
+    
+    if "api_key_warning" in st.session_state and st.session_state.api_key_warning:
+        st.warning(st.session_state.api_key_warning)
+        del st.session_state.api_key_warning
     
     cols = st.columns(3)
     for i, t in enumerate(FORMULATION_TYPES):
