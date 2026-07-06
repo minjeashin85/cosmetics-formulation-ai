@@ -87,7 +87,7 @@ for key, default in [
         st.session_state[key] = default
 
 # ------------------------------------------------------------------
-# 마우스 반응형 리퀴드 글라스 캔버스 효과 (Anti-Gravity Liquid Glass Effect)
+# 마우스 반응형 리퀴드 글라스 캔버스 효과 (True 3D WebGL Liquid Glass Effect)
 # ------------------------------------------------------------------
 components.html("""
 <script>
@@ -96,154 +96,199 @@ components.html("""
   const win = window.parent;
   
   // Clean up any old canvas elements if they exist
-  const oldCanvas = doc.getElementById('liquidCanvas');
-  if (oldCanvas) {
-    oldCanvas.remove();
-  }
-  const oldSpot = doc.getElementById('cfa-spotlight');
-  if (oldSpot) {
-    oldSpot.remove();
-  }
+  ['liquidCanvas', 'liquidGlassCanvas', 'cfa-spotlight'].forEach(id => {
+    const el = doc.getElementById(id);
+    if (el) {
+      el.remove();
+    }
+  });
   
-  // Prevent duplicate canvas creation and animation loops on Streamlit reruns
-  if (win.cfaLiquidGlassEffectInitialized) {
+  // Prevent duplicate Three.js initializations on Streamlit reruns
+  if (win.cfa3DCanvasInitialized) {
     return;
   }
-  win.cfaLiquidGlassEffectInitialized = true;
   
-  let canvas = doc.getElementById('liquidGlassCanvas');
-  if (!canvas) {
-    canvas = doc.createElement('canvas');
-    canvas.id = 'liquidGlassCanvas';
-    canvas.style.position = 'fixed';
-    canvas.style.top = '0';
-    canvas.style.left = '0';
-    canvas.style.pointerEvents = 'none';
-    canvas.style.zIndex = '0';
-    canvas.style.display = 'block';
-    canvas.style.width = '100vw';
-    canvas.style.height = '100vh';
-    // The core of the liquid glass effect: blur + contrast + drop-shadow for light background
-    canvas.style.filter = 'blur(12px) contrast(22) hue-rotate(15deg) drop-shadow(0 10px 20px rgba(0, 0, 0, 0.06))';
-    doc.body.appendChild(canvas);
+  function loadThree(callback) {
+    if (win.THREE) {
+      callback();
+      return;
+    }
+    let script = doc.getElementById('threeJsScript');
+    if (!script) {
+      script = doc.createElement('script');
+      script.id = 'threeJsScript';
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+      script.onload = () => {
+        callback();
+      };
+      doc.head.appendChild(script);
+    } else {
+      const checkInterval = setInterval(() => {
+        if (win.THREE) {
+          clearInterval(checkInterval);
+          callback();
+        }
+      }, 50);
+    }
   }
   
-  const ctx = canvas.getContext('2d');
-  
-  function resize() {
-    canvas.width = win.innerWidth;
-    canvas.height = win.innerHeight;
-  }
-  resize();
-  win.addEventListener('resize', resize);
-  
-  // Mouse coordinates and radius of influence
-  const mouse = { x: null, y: null, radius: 180 };
-  doc.addEventListener('mousemove', (e) => {
-    mouse.x = e.clientX;
-    mouse.y = e.clientY;
-  });
-  doc.addEventListener('mouseleave', () => {
-    mouse.x = null;
-    mouse.y = null;
-  });
-  
-  const particles = [];
-  const particleCount = 45; // Number of floating liquid drops
-  
-  class LiquidGlassDrop {
-    constructor() {
-      this.reset();
-      // Distribute initially across the screen height
-      this.y = Math.random() * canvas.height;
+  loadThree(() => {
+    if (win.cfa3DCanvasInitialized) {
+      return;
+    }
+    win.cfa3DCanvasInitialized = true;
+    
+    let canvas = doc.getElementById('liquidGlassCanvas3D');
+    if (!canvas) {
+      canvas = doc.createElement('canvas');
+      canvas.id = 'liquidGlassCanvas3D';
+      canvas.style.position = 'fixed';
+      canvas.style.top = '0';
+      canvas.style.left = '0';
+      canvas.style.width = '100vw';
+      canvas.style.height = '100vh';
+      canvas.style.pointerEvents = 'none';
+      canvas.style.zIndex = '0';
+      canvas.style.display = 'block';
+      doc.body.appendChild(canvas);
     }
     
-    reset() {
-      this.x = Math.random() * canvas.width;
-      this.y = canvas.height + Math.random() * 100; // Spawn below screen
-      this.radius = Math.random() * 35 + 15; // Sizes 15px - 50px
-      this.baseSpeedY = Math.random() * 0.8 + 0.4; // Anti-gravity upward speed
-      this.speedX = Math.random() * 0.6 - 0.3;
+    const THREE = win.THREE;
+    
+    // 1. 3D Scene and Camera setup
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, win.innerWidth / win.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+    
+    renderer.setSize(win.innerWidth, win.innerHeight);
+    renderer.setPixelRatio(Math.min(win.devicePixelRatio, 2));
+    renderer.setClearColor(0xffffff, 1); // Set background completely white
+    
+    // 2. Lighting Setup (Specular highlights + caustics simulation)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+    scene.add(ambientLight);
+    
+    const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
+    dirLight.position.set(5, 10, 7);
+    scene.add(dirLight);
+    
+    // Color point lights for interior caustics refraction
+    const cyanLight = new THREE.PointLight(0x00bfff, 3, 30);
+    const pinkLight = new THREE.PointLight(0xff007f, 3, 30);
+    scene.add(cyanLight, pinkLight);
+    
+    // 3. Apple-style Physical Glass Material
+    const glassMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.4,
+      roughness: 0.01,
+      metalness: 0.05,
+      transmission: 0.98,
+      ior: 1.45,
+      thickness: 2.5,
+      specularIntensity: 2.0,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.02
+    });
+    
+    // 4. 3D Droplet Particles
+    const droplets = [];
+    const count = 25;
+    const geometry = new THREE.SphereGeometry(1, 64, 64);
+    
+    for (let i = 0; i < count; i++) {
+      const mesh = new THREE.Mesh(geometry, glassMaterial);
       
-      // Depth opacity based on size
-      this.alpha = this.radius > 35 ? 0.75 : 0.45;
-      this.vx = 0;
-      this.vy = 0;
-    }
-    
-    draw() {
-      // Radial gradient centered slightly top-left for caustics & highlight
-      const gradient = ctx.createRadialGradient(
-        this.x - this.radius * 0.25,
-        this.y - this.radius * 0.25,
-        this.radius * 0.05,
-        this.x,
-        this.y,
-        this.radius
+      mesh.position.set(
+        (Math.random() - 0.5) * 16,
+        (Math.random() - 0.5) * 10 - 2,
+        (Math.random() - 0.5) * 4
       );
       
-      // Pure glass light theme gradient color stops
-      gradient.addColorStop(0, `rgba(255, 255, 255, ${this.alpha})`);               // Center strong highlight
-      gradient.addColorStop(0.3, `rgba(215, 235, 255, ${this.alpha * 0.8})`);       // Clear liquid glass layer
-      gradient.addColorStop(0.7, `rgba(255, 210, 240, ${this.alpha * 0.5})`);       // Prism pink refraction
-      gradient.addColorStop(0.9, `rgba(190, 220, 255, ${this.alpha * 0.3})`);       // Outer blue rim
-      gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');                          // Transparent fade for metaball merge
+      const scale = Math.random() * 0.7 + 0.3;
+      mesh.scale.set(scale, scale, scale);
       
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-      ctx.fillStyle = gradient;
-      ctx.fill();
+      mesh.userData = {
+        speedY: Math.random() * 0.015 + 0.008,
+        speedX: (Math.random() - 0.5) * 0.005,
+        originalScale: scale,
+        wobbleSpeed: Math.random() * 3 + 2,
+        seed: Math.random() * 100
+      };
+      
+      scene.add(mesh);
+      droplets.push(mesh);
     }
     
-    update() {
-      // 1. Basic upward anti-gravity motion
-      this.y -= this.baseSpeedY;
-      this.x += this.speedX;
-      
-      // 2. Mouse attraction / distortion physics (surface tension feel)
-      if (mouse.x !== null && mouse.y !== null) {
-        const dx = mouse.x - this.x;
-        const dy = mouse.y - this.y;
-        const distance = Math.hypot(dx, dy);
-        
-        if (distance < mouse.radius) {
-          const force = (mouse.radius - distance) / mouse.radius;
-          this.vx += (dx / distance) * force * 0.8;
-          this.vy += (dy / distance) * force * 0.8;
-        }
-      }
-      
-      this.x += this.vx;
-      this.y += this.vy;
-      this.vx *= 0.85;
-      this.vy *= 0.85;
-      
-      // Recycle to bottom if gone past top
-      if (this.y < -this.radius * 2) {
-        this.reset();
-      }
-    }
-  }
-  
-  // Initialize particles
-  for (let i = 0; i < particleCount; i++) {
-    particles.push(new LiquidGlassDrop());
-  }
-  
-  function animate() {
-    requestAnimationFrame(animate);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    camera.position.z = 7;
     
-    // Sort by radius to draw smaller ones in background (Depth of field)
-    particles.sort((a, b) => a.radius - b.radius);
-    
-    particles.forEach(particle => {
-      particle.update();
-      particle.draw();
+    // 5. Mouse Interaction coordinates
+    const mouse = { x: 0, y: 0, targetX: 0, targetY: 0 };
+    doc.addEventListener('mousemove', (e) => {
+      mouse.targetX = (e.clientX / win.innerWidth) * 2 - 1;
+      mouse.targetY = -(e.clientY / win.innerHeight) * 2 + 1;
     });
-  }
-  
-  animate();
+    
+    // 6. Animation Loop
+    const clock = new THREE.Clock();
+    
+    function animate() {
+      requestAnimationFrame(animate);
+      const time = clock.getElapsedTime();
+      
+      // Easing for mouse target tracking
+      mouse.x += (mouse.targetX - mouse.x) * 0.1;
+      mouse.y += (mouse.targetY - mouse.y) * 0.1;
+      
+      // Move lights based on mouse position to shift caustics shading
+      cyanLight.position.set(mouse.x * 8, mouse.y * 5, 2);
+      pinkLight.position.set(-mouse.x * 8, -mouse.y * 5, 1);
+      
+      droplets.forEach(mesh => {
+        const data = mesh.userData;
+        
+        // Anti-gravity float
+        mesh.position.y += data.speedY;
+        mesh.position.x += data.speedX;
+        
+        // Surface tension wobble distortion
+        const wobble = Math.sin(time * data.wobbleSpeed + data.seed) * 0.06;
+        mesh.scale.x = data.originalScale + wobble;
+        mesh.scale.y = data.originalScale - wobble;
+        mesh.scale.z = data.originalScale + (wobble * 0.5);
+        
+        // Mouse 3D attraction
+        const mouseX3D = mouse.x * 8;
+        const mouseY3D = mouse.y * 5;
+        const dx = mouseX3D - mesh.position.x;
+        const dy = mouseY3D - mesh.position.y;
+        const dist = Math.hypot(dx, dy);
+        
+        if (dist < 3.5) {
+          mesh.position.x += dx * 0.015;
+          mesh.position.y += dy * 0.015;
+        }
+        
+        // Loop recycle
+        if (mesh.position.y > 6) {
+          mesh.position.y = -6;
+          mesh.position.x = (Math.random() - 0.5) * 16;
+        }
+      });
+      
+      renderer.render(scene, camera);
+    }
+    
+    animate();
+    
+    // Resize Handler
+    win.addEventListener('resize', () => {
+      camera.aspect = win.innerWidth / win.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(win.innerWidth, win.innerHeight);
+    });
+  });
 })();
 </script>
 """, height=0)
