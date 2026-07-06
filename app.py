@@ -1247,7 +1247,7 @@ elif st.session_state.step == 1:
       
       <script>
         function selectType(ftype) {{
-          window.parent.postMessage({ type: 'select_ftype', ftype: ftype }, '*');
+          window.parent.postMessage({{ type: 'select_ftype', ftype: ftype }}, '*');
         }}
       </script>
     </head>
