@@ -478,20 +478,37 @@ PHASE_PALETTE = ["#2563EB", "#6366F1", "#0EA5E9", "#818CF8", "#38BDF8", "#93C5FD
 
 # Helper functions for query params compatibility
 def get_query_param(name):
+    val = None
     try:
         if hasattr(st, "query_params"):
-            return st.query_params.get(name)
+            val = st.query_params.get(name)
     except Exception:
         pass
-    try:
-        params = st.experimental_get_query_params()
-        if name in params:
-            return params[name][0]
-    except Exception:
-        pass
+    if val is None:
+        try:
+            params = st.experimental_get_query_params()
+            if name in params:
+                val = params[name][0]
+        except Exception:
+            pass
+    
+    if isinstance(val, list):
+        if len(val) > 0:
+            val = val[0]
+        else:
+            val = None
+            
+    if val is not None:
+        return str(val).strip()
     return None
 
 def clear_query_params():
+    for key in ["ftype"]:
+        try:
+            if hasattr(st, "query_params") and key in st.query_params:
+                del st.query_params[key]
+        except Exception:
+            pass
     try:
         if hasattr(st, "query_params"):
             st.query_params.clear()
