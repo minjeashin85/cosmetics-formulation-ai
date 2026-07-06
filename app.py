@@ -403,12 +403,24 @@ div[class*="stColumn"]:has(.cfa-tile-marker),
     position: relative;
 }
 .cfa-tile { padding: 24px 8px 16px 8px; text-align:center; margin-bottom: 14px; display:flex; flex-direction:column; align-items:center; }
-.cfa-icon-wrap { width: 140px; height: 140px; margin: 0 auto; transition: transform .5s cubic-bezier(.175,.885,.32,1.275), filter .5s; }
+.cfa-icon-wrap { width: 140px; height: 140px; margin: 0 auto; transition: transform .5s cubic-bezier(.175,.885,.32,1.275), filter .5s; display: flex; align-items: center; justify-content: center; }
+.cfa-category-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 10px rgba(255, 0, 160, 0.15)) !important;
+    transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.5s ease !important;
+}
 div[data-testid="column"]:has(.cfa-tile-marker):hover .cfa-icon-wrap,
 div[class*="stColumn"]:has(.cfa-tile-marker):hover .cfa-icon-wrap,
 .stColumn:has(.cfa-tile-marker):hover .cfa-icon-wrap {
     transform: scale(1.18) rotate(-4deg) !important;
-    filter: drop-shadow(0 0 25px rgba(255,0,160,0.35)) !important;
+}
+div[data-testid="column"]:has(.cfa-tile-marker):hover .cfa-category-img,
+div[class*="stColumn"]:has(.cfa-tile-marker):hover .cfa-category-img,
+.stColumn:has(.cfa-tile-marker):hover .cfa-category-img {
+    transform: translateY(-8px) scale(1.08) !important;
+    filter: drop-shadow(0 15px 25px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 25px rgba(255, 0, 160, 0.5)) !important;
 }
 .cfa-name-pill {
     position: relative; overflow: hidden;
