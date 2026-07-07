@@ -241,6 +241,8 @@ components.html("""
   let targetX = currentX, targetY = currentY;
   let lastX = currentX, lastY = currentY;
   let lastHoveredEl = null;
+  let lastMoveTime = Date.now();
+  let currentOpacity = 0; // Start hidden
 
   if (win.cfaOnMouseMove) {
     doc.removeEventListener('mousemove', win.cfaOnMouseMove);
@@ -249,6 +251,7 @@ components.html("""
   win.cfaOnMouseMove = (e) => {
     targetX = e.clientX;
     targetY = e.clientY;
+    lastMoveTime = Date.now(); // Record last mouse movement
 
     const hoveredEl = doc.elementFromPoint(e.clientX, e.clientY);
     if (hoveredEl) {
@@ -283,9 +286,24 @@ components.html("""
       if (win.cfaCancelAppleGlassLens) {
         return;
       }
-      // Fluid spring latency decay
-      currentX += (targetX - currentX) * 0.18;
-      currentY += (targetY - currentY) * 0.18;
+      
+      // Smooth fade out/shrink when mouse stops moving for more than 800ms
+      const idleTime = Date.now() - lastMoveTime;
+      const targetOpacity = (idleTime > 800) ? 0 : 1;
+      currentOpacity += (targetOpacity - currentOpacity) * 0.08; // smooth transition
+      
+      if (currentOpacity < 0.005) {
+          lens.style.display = 'none';
+          currentOpacity = 0;
+      } else {
+          lens.style.display = 'block';
+      }
+      
+      lens.style.opacity = currentOpacity;
+      
+      // Sticky spring lag physics (coefficient reduced from 0.18 to 0.075 for stickier feel)
+      currentX += (targetX - currentX) * 0.075;
+      currentY += (targetY - currentY) * 0.075;
       
       const vx = currentX - lastX;
       const vy = currentY - lastY;
@@ -298,8 +316,11 @@ components.html("""
       lens.style.left = `${currentX}px`;
       lens.style.top = `${currentY}px`;
       
-      const stretch = Math.min(speed * 0.06, 0.22); 
-      lens.style.transform = `translate(-50%, -50%) rotate(${angle}rad) scale(${1 + stretch}, ${1 - stretch * 0.4})`;
+      // Elastomeric sticky stretching deformation (stretch factor and max limit increased)
+      const stretch = Math.min(speed * 0.14, 0.42); 
+      const finalScaleX = (1 + stretch) * currentOpacity;
+      const finalScaleY = (1 - stretch * 0.4) * currentOpacity;
+      lens.style.transform = `translate(-50%, -50%) rotate(${angle}rad) scale(${finalScaleX}, ${finalScaleY})`;
       
       requestAnimationFrame(animateLens);
   }
