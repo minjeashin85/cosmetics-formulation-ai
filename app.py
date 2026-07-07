@@ -837,10 +837,26 @@ textarea {
     background: linear-gradient(90deg, #00f0ff, #ff00a0);
     border-radius: 3px;
 }
-.cfa-score-desc {
-    font-size: 11.5px;
-    color: rgba(255, 255, 255, 0.65);
-    line-height: 1.3;
+/* Warning card for feasibility check failure */
+.cfa-warning-card {
+    position: relative;
+    background: linear-gradient(135deg, rgba(40,15,20,0.8), rgba(25,10,12,0.6)) !important;
+    border-radius: 20px !important;
+    border: 1px solid rgba(255, 75, 75, 0.3) !important;
+    padding: 24px !important;
+    margin: 20px 0 !important;
+    box-shadow: 0 15px 30px rgba(0,0,0,0.6), 0 0 15px rgba(255, 75, 75, 0.1) !important;
+    overflow: hidden !important;
+}
+.cfa-warning-glow {
+    position: absolute !important;
+    top: -50% !important;
+    left: -50% !important;
+    width: 200% !important;
+    height: 200% !important;
+    background: radial-gradient(circle at center, rgba(255, 75, 75, 0.08) 0%, transparent 60%) !important;
+    pointer-events: none !important;
+    z-index: 0 !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -1213,6 +1229,77 @@ def generate_formulation(ftype, db_df, existing_ingredients=None):
 {base_instruction}
 
 보유 원료 DB 목록(단가 매칭용, 참고):
+{', '.join(db_names)}
+"""
+    resp = call_gemini_with_retry(
+        client.models.generate_content,
+        model=st.session_state.model_name,
+        contents=[prompt],
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=FormulationResult
+        )
+    )
+    return json.loads(resp.text)
+
+class FeasibilityAnalysis(BaseModel):
+    feasible: bool = Field(description="제공된 성분목록만으로 선택된 제형을 물리적/화학적으로 제조 가능한지 여부 (true/false)")
+    analysis: str = Field(description="제조 가능/불가능에 대한 화장품 화학적 관점의 상세 이유 (한국어)")
+    missing_ingredients: list[str] = Field(description="선택된 제형을 만들기 위해 필수적이지만 제공된 성분목록에 누락된 원료 또는 성분군 목록 (예: 세정제의 경우 세정용 계면활성제 등. 제조 가능할 경우 빈 배열)")
+    alternative_formulations: list[str] = Field(description="제공된 성분목록만으로 제조 가능한 타 제형 종류들 (예: ['앰플', '크림'] 등)")
+
+def check_feasibility(ftype_label, ingredients_text):
+    """사용자가 입력한 전성분으로 선택한 제형을 제조할 수 있는지 Gemini에게 판별 요청"""
+    client = get_client()
+    prompt = f"""너는 화장품 제형 및 처방 개발 연구원임.
+사용자가 입력한 전성분 목록을 검토하여, 화학적/물리적으로 선택한 화장품 제형을 제조할 수 있는지 판별해줘.
+
+선택한 제형 종류: {ftype_label}
+사용자가 입력한 전성분 목록: {ingredients_text}
+
+[판별 기준 예시]
+1. 세정제(클렌저): 세정 및 거품 형성을 위해 반드시 세정용 계면활성제(예: 코코-베타인, 데실글루코사이드, 소듐코코일이세티오네이트, 라우릴글루코사이드, 디소듐코코암포디아세테이트, 포타슘코코에이트 등)가 포함되어야 합니다. 계면활성제 성분이 아예 없으면 세정제 제조가 불가능합니다.
+2. 크림(Cream): 물 성분(정제수 등)과 유상 성분(오일, 왁스, 버터류 등), 그리고 이들을 섞어줄 유화제(예: 세테아릴올리베이트, 소르비탄올리베이트, 글리세릴스테아레이트, 폴리소르베이트60, 소르비탄스테아레이트, 세테아릴알코올 등) 및 제형 안정을 위한 점증제(잔탄검, 카보머, 아크릴레이트 계열 등)가 필수적입니다. 유상 성분이나 유화제 없이 물과 점증제만으로는 크림을 유화하여 만들 수 없습니다.
+3. 로션(Lotion): 크림과 유사하게 수상, 유상, 유화제 및 점증제가 적절히 혼합되어야 유화(Emulsion) 제형인 로션을 형성할 수 있습니다. 유상 성분이나 유화제 성분이 아예 없으면 제조가 불가능합니다.
+4. 토너(Toner): 대부분이 수용성 성분으로 이루어진 투명하거나 반투명한 액상 제형입니다. 만약 유분(오일) 성분이 포함되어 있다면, 이를 안정적으로 가용화하기 위한 가용화제(예: 피이지-60하이드로제네이티드캐스터오일, 폴리소르베이트20 등 가용화용 계면활성제)가 필수로 들어가야 층분리가 일어나지 않고 투명/투명에 가까운 안정적인 토너를 만들 수 있습니다. 가용화제 없이 대량의 오일만 들어가면 오일 층분리가 발생하여 토너 제조가 불가능합니다.
+5. 앰플(Ampoule): 고농축 활성 성분(나이아신아마이드, 아데노신, 아스코빅애씨드, 병풀추출물, 히알루론산 등)과 제형의 농밀한 점도를 잡기 위한 점증제(카보머, 잔탄검, 암모늄아크릴로일다이메틸타우레이트/vp코폴리머 등)가 주로 활용됩니다. 활성 성분이나 점증제가 없이 물과 보습제만 있는 경우 앰플로 정의하기 부적합합니다.
+6. 세럼(Serum): 수분 베이스를 바탕으로 에센스 타입의 제형을 갖추어야 하므로, 적절한 보습 성분과 점증 성분, 혹은 가벼운 유화 성분이 함유되어야 합니다.
+
+[중요 지침]
+같은 전성분 목록이라도 제형의 물리화학적 특성이 다르면(예: 계면활성제만 가득한 성분으로 크림을 만들 수 없고, 오일과 유화제만 가득한 성분으로 투명한 토너를 만들 수 없음) 제조 불가능(feasible: false)으로 판정해야 합니다.
+판정 시, 제조 불가능할 경우 `missing_ingredients`에 해당 제형을 만들기 위해 반드시 추가해야 하는 원료군이나 구체적인 원료의 예시(한글)를 구체적으로 적어주세요.
+또한 `alternative_formulations`에 현재 성분만으로 제조가 가능한 다른 대안 제형 종류들(예: ['앰플', '크림'] 등)을 6대 제형(앰플, 크림, 세럼, 로션, 토너, 클렌저) 중에서 찾아 제공해 주세요.
+
+판별 결과를 JSON 형식으로 반환해줘."""
+
+    resp = call_gemini_with_retry(
+        client.models.generate_content,
+        model=st.session_state.model_name,
+        contents=[prompt],
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=FeasibilityAnalysis
+        )
+    )
+    return json.loads(resp.text)
+
+def generate_formulation_supplemented(ftype, db_df, user_ingredients, missing_list):
+    """부족한 필수 원료들을 포함시켜 제형 제조가 가능하도록 레시피를 보완 설계"""
+    client = get_client()
+    db_names = db_df["name"].tolist()
+    
+    prompt = f"""너는 화장품 처방 개발 전문가임.
+사용자가 선택한 제형({ftype['label']})을 제조하기 위해 사용자가 제공한 기존 전성분 목록에 필수적인 누락 원료들을 보완/추가하여 안정적인 배합을 설계해줘.
+
+기존 전성분 목록: {user_ingredients}
+추가해야 하는 필수 누락 원료/성분군: {', '.join(missing_list)}
+
+★ [필수 요구사항] ★
+1. 기존 전성분 목록에 포함된 모든 원료를 100% 반영해야 합니다.
+2. 위 '추가해야 하는 필수 누락 원료/성분군'을 참고하여, 제형이 물리적/화학적으로 완벽히 유화 또는 가용화 또는 세정력을 가질 수 있도록 알맞은 실제 원료명(한글)으로 추가해 주세요.
+3. 배합 처방(ingredients)과 9점 척도 평가 점수(scores)를 최종 출력해 주세요.
+
+보유 원료 DB 목록(참고):
 {', '.join(db_names)}
 """
     resp = call_gemini_with_retry(
@@ -1679,79 +1766,74 @@ if st.session_state.step == 0:
         
         st.caption("※ 로컬 환경 변수 `GEMINI_API_KEY`를 설정하거나 Streamlit Secrets를 구성하면 이 화면을 건너뛸 수 있습니다.")
         if st.button("시작하기 →", use_container_width=True, type="primary"):
-            cleaned_key = key_input.strip().strip('\"\'')
+            cleaned_key = key_input.strip().strip('"\'')
             if cleaned_key:
-                selected_model = model_input.strip() or "gemini-2.5-flash"
+                selected_model = model_input.strip()
                 with st.spinner("Gemini API 키 검증 중..."):
                     is_valid, err_msg = validate_api_key(cleaned_key, selected_model)
                 if is_valid:
                     st.session_state.api_key = cleaned_key
                     st.session_state.model_name = selected_model
                     st.session_state.step = 1
-                    if err_msg.startswith("warning:"):
-                        st.session_state.api_key_warning = err_msg.replace("warning:", "")
                     st.rerun()
                 else:
                     st.error(f"❌ API 키 검증 실패: {err_msg}")
             else:
-                st.error("올바른 API 키를 입력해 주세요")
+                st.error("API 키를 입력해 주세요.")
 
-# ------------------------------------------------------------------
-# STEP 1: 제형 선택
-# ------------------------------------------------------------------
 elif st.session_state.step == 1:
-    st.caption("STEP 1")
-    st.subheader("설계하고자 하는 화장품 제형을 선택해 주세요")
+    st.markdown("### 🧴 제형 종류 선택")
+    st.write("설계하고자 하는 화장품 제형을 선택해 주세요.")
     
-    if "api_key_warning" in st.session_state and st.session_state.api_key_warning:
-        st.warning(st.session_state.api_key_warning)
-        del st.session_state.api_key_warning
+    cols1 = st.columns(3)
+    cols2 = st.columns(3)
+    all_cols = cols1 + cols2
     
-    # 2 rows of 3 columns
-    for row_idx, chunk in enumerate([FORMULATION_TYPES[:3], FORMULATION_TYPES[3:]]):
-        cols = st.columns(3)
-        for i, t in enumerate(chunk):
-            with cols[i]:
-                st.markdown(f'''
-                <div class="liquid-glass cfa-tile cfa-tile-marker">
-                  <div class="cfa-icon-wrap">{t["svg"]}</div>
-                  <div class="cfa-name-pill">{t["label"]}<span class="cfa-liquid-drop2"></span></div>
-                </div>
-                ''', unsafe_allow_html=True)
-                if st.button(t["label"], key=f"btn_{t['id']}", use_container_width=True):
-                    st.session_state.ftype = t
-                    st.session_state.step = 2
-                    st.rerun()
+    for idx, ftype in enumerate(FORMULATION_TYPES):
+        with all_cols[idx]:
+            st.markdown(f'''
+            <div class="cfa-tile-marker"></div>
+            <div class="liquid-glass cfa-tile">
+              <div class="cfa-icon-wrap">
+                {ftype["svg"]}
+              </div>
+              <div class="cfa-name-pill">
+                {ftype["label"]}
+                <span class="cfa-liquid-drop2"></span>
+              </div>
+            </div>
+            ''', unsafe_allow_html=True)
+            
+            # Invisible overlay button for click detection
+            if st.button("", key=f"btn_{ftype['id']}", use_container_width=True):
+                st.session_state.ftype = ftype
+                st.session_state.step = 2
+                st.rerun()
 
-# ------------------------------------------------------------------
-# STEP 2: 라벨 크롭 및 AI 처방 설계
-# ------------------------------------------------------------------
 elif st.session_state.step == 2:
     ftype = st.session_state.ftype
-    st.caption("STEP 2")
-    st.subheader(f"✨ {ftype['label']} 설계 조건 설정")
     
+    # 2 Columns for Image Upload / Crop and Design Start
     col_l, col_r = st.columns([1.2, 1])
-    
     with col_l:
-        st.markdown('<div class="cfa-step2-marker"></div>', unsafe_allow_html=True)
-        st.markdown("#### 1. 기존 제품 라벨 이미지 업로드 (선택)")
-        st.write("이미지의 성분표 부분만 드래그하여 정확하게 지정하면, AI가 성분을 완벽히 파악해 맞춤 배합에 반영합니다.")
-        uploaded = st.file_uploader("라벨 이미지 업로드 (10MB 이하)", type=["png", "jpg", "jpeg"], key="label_file_uploader")
-        cropped_img = None
-
-        if uploaded is not None:
-            if uploaded.size > 10 * 1024 * 1024:
-                st.error("파일이 너무 큽니다. 10MB 이하의 이미지를 업로드해 주세요.")
-            else:
-                orig_img = Image.open(uploaded).convert("RGB")
-                st.caption("아래 박스의 모서리를 끌어 성분표 텍스트 영역만 알맞게 지정해 주세요.")
-                cropped_img = st_cropper(
-                    orig_img, realtime_update=True, box_color="#ff00a0",
-                    aspect_ratio=None, return_type="image"
-                )
-                st.session_state.label_original = orig_img
+        uploaded = st.file_uploader(
+            "라벨 이미지 업로드 (선택)", 
+            type=["png", "jpg", "jpeg"], 
+            key="label_file_uploader"
+        )
         
+        cropped_img = None
+        if uploaded is not None:
+            orig_img = Image.open(uploaded).convert("RGB")
+            st.caption("아래 박스의 모서리를 끌어 성분표 텍스트 영역만 알맞게 지정해 주세요.")
+            cropped_img = st_cropper(
+                orig_img, realtime_update=True, box_color="#ff00a0",
+                aspect_ratio=None, return_type="image"
+            )
+            st.session_state.label_original = orig_img
+        else:
+            st.write("업로드된 라벨이 없습니다. 원료 DB에 있는 성분들을 활용하여 **인공지능의 신규 배합 설계**를 바로 시작합니다.")
+            
     with col_r:
         st.markdown('<div class="cfa-step2-marker"></div>', unsafe_allow_html=True)
         st.markdown("#### 2. 배합 설계 시작")
@@ -1785,11 +1867,151 @@ elif st.session_state.step == 2:
                             st.error(f"성분 추출에 실패했습니다: {e}")
                             with st.expander("🛠️ 상세 에러 로그 (디버깅용)"):
                                 st.code(traceback.format_exc())
-        else:
-            st.write("업로드된 라벨이 없습니다. 원료 DB에 있는 성분들을 활용하여 **인공지능의 신규 배합 설계**를 바로 시작합니다.")
-            
+                                
+    # Underneath, full width ingredients text editor
+    with st.container():
+        st.markdown('<div class="cfa-step2-full-marker"></div>', unsafe_allow_html=True)
+        st.markdown("#### 📝 반영할 전성분 리스트 (직접 수정 · 추가 · 삭제 가능)")
+        st.write("라벨 이미지에서 성분을 추출하거나 직접 입력하면 여기에 표시되며, 자유롭게 성분을 추가하거나 삭제하실 수 있습니다.")
+        
+        ingredients_txt = st.text_area(
+            "배합의 기본 뼈대로 삼을 성분 리스트 (쉼표로 구분)",
+            value=st.session_state.label_ingredients or "",
+            placeholder="예: 정제수, 글리세린, 부틸렌글라이콜, 나이아신아마이드 (또는 라벨 이미지를 올려 추출해 주세요)",
+            height=120,
+            label_visibility="collapsed",
+            key="ingredients_text_editor"
+        )
+        st.session_state.label_ingredients = ingredients_txt  # Sync back to state
+        
         st.markdown("<br>", unsafe_allow_html=True)
-
+        
+        # 제조 불가능 판정 결과가 있을 경우 에러 카드 노출
+        if "feasibility_error" in st.session_state and st.session_state.feasibility_error:
+            err = st.session_state.feasibility_error
+            st.markdown(f'''
+            <div class="cfa-warning-card">
+              <div class="cfa-warning-glow"></div>
+              <h4 style="color:#ff4b4b; margin-top:0; font-family:'Space Grotesk',sans-serif;">⚠️ 제형 설계 불가 판정 (Feasibility Check)</h4>
+              <p style="color:rgba(255,255,255,0.95); font-size:14px; line-height:1.6; margin-bottom:15px;">
+                {err["analysis"]}
+              </p>
+              <div style="margin: 15px 0;">
+                <span style="color:#f59e0b; font-weight:700; font-size:14px;">🔍 누락된 필수 성분군/원료:</span>
+                <ul style="color:rgba(255,255,255,0.85); margin-top:5px; padding-left:20px; font-size:13.5px;">
+                  {"".join([f"<li>{item}</li>" for item in err["missing_ingredients"]])}
+                </ul>
+              </div>
+              <div style="margin: 15px 0;">
+                <span style="color:#00f0ff; font-weight:700; font-size:14px;">💡 현재 입력된 원료로 제조 가능한 제형:</span>
+                <span style="color:#ffffff; font-weight:600; font-size:13.5px;"> {", ".join(err["alternative_formulations"])}</span>
+              </div>
+            </div>
+            ''', unsafe_allow_html=True)
+            
+            col_err1, col_err2 = st.columns(2)
+            with col_err1:
+                if st.button("💡 부족한 필수 원료를 추가하여 보완 처방 생성", type="primary", use_container_width=True):
+                    placeholder = st.empty()
+                    placeholder.markdown('''
+                    <div class="liquid-glass cfa-loading-box">
+                      <div class="cfa-ring-wrap">
+                        <div class="cfa-ring"></div><div class="cfa-ring d2"></div>
+                        <div class="cfa-core"></div><div class="cfa-core-inner">🧴</div>
+                      </div>
+                      <div class="cfa-loading-label">Gemini AI · SUPPLEMENTING</div>
+                      <div class="cfa-loading-msg">부족한 필수 성분 자동 보완 및 배합 재구성 중...</div>
+                    </div>
+                    ''', unsafe_allow_html=True)
+                    try:
+                        # 부족한 필수 성분 DB 병합
+                        missing_str = ", ".join(err["missing_ingredients"])
+                        merge_extracted_into_db(missing_str)
+                        
+                        # 보완 설계
+                        raw = generate_formulation_supplemented(ftype, st.session_state.db, ingredients_txt, err["missing_ingredients"])
+                        st.session_state.raw_formulation = raw
+                        
+                        df = normalize_and_cost(raw["ingredients"], st.session_state.db)
+                        st.session_state.formulation = df
+                        
+                        # 오류 상태 초기화 및 화면 전환
+                        del st.session_state.feasibility_error
+                        st.session_state.step = 3
+                        placeholder.empty()
+                        st.rerun()
+                    except Exception as e:
+                        placeholder.empty()
+                        st.error(f"보완 처방 설계에 실패했습니다: {e}")
+            with col_err2:
+                if st.button("📝 성분 목록 직접 수정하기", use_container_width=True):
+                    del st.session_state.feasibility_error
+                    st.rerun()
+        else:
+            # "AI 배합 실행" 버튼
+            if st.button("🤖 AI 배합 실행", type="primary", use_container_width=True):
+                placeholder = st.empty()
+                placeholder.markdown('''
+                <div class="liquid-glass cfa-loading-box">
+                  <div class="cfa-ring-wrap">
+                    <div class="cfa-ring"></div><div class="cfa-ring d2"></div>
+                    <div class="cfa-core"></div><div class="cfa-core-inner">🧴</div>
+                  </div>
+                  <div class="cfa-loading-label">Gemini AI · FEASIBILITY CHECK</div>
+                  <div class="cfa-loading-msg">입력된 성분 기반 제형 제조 가능 여부 판별 중...</div>
+                </div>
+                ''', unsafe_allow_html=True)
+                
+                try:
+                    # 1단계: 제조 가능 여부 분석 (입력 성분이 있을 때만)
+                    if ingredients_txt.strip():
+                        analysis = check_feasibility(ftype["label"], ingredients_txt.strip())
+                        if not analysis["feasible"]:
+                            st.session_state.feasibility_error = analysis
+                            placeholder.empty()
+                            st.rerun()
+                    
+                    # 2단계: 제조 가능한 경우 배합 생성 진행
+                    placeholder.markdown('''
+                    <div class="liquid-glass cfa-loading-box">
+                      <div class="cfa-ring-wrap">
+                        <div class="cfa-ring"></div><div class="cfa-ring d2"></div>
+                        <div class="cfa-core"></div><div class="cfa-core-inner">🧴</div>
+                      </div>
+                      <div class="cfa-loading-label">Gemini AI · SKINCARE FORMULATION</div>
+                      <div class="cfa-loading-msg">원료 상용성 분석 및 맞춤형 스킨케어 배합 구성 중...</div>
+                    </div>
+                    ''', unsafe_allow_html=True)
+                    
+                    # 최종 수동 편집된 원료가 있으면 DB에 다시 병합
+                    if ingredients_txt.strip():
+                        merge_extracted_into_db(ingredients_txt)
+    
+                    # 배합 생성
+                    raw = generate_formulation(ftype, st.session_state.db, ingredients_txt.strip() or None)
+                    st.session_state.raw_formulation = raw
+                    
+                    df = normalize_and_cost(raw["ingredients"], st.session_state.db)
+                    st.session_state.formulation = df
+                    
+                    st.session_state.step = 3
+                    placeholder.empty()
+                    st.rerun()
+                except Exception as e:
+                    placeholder.empty()
+                    import traceback
+                    err_str = str(e)
+                    if "API_KEY_INVALID" in err_str or "API key not valid" in err_str or "400" in err_str:
+                        st.session_state.api_key = ""
+                        st.session_state.step = 0
+                        st.session_state.api_key_error_msg = "❌ 입력된 Gemini API 키가 올바르지 않거나 만료되었습니다. API 키를 재설정해 주세요."
+                        st.rerun()
+                    else:
+                        st.error(f"처방 설계에 실패했습니다: {e}")
+                        with st.expander("🛠️ 상세 에러 로그 (디버깅용)"):
+                            st.code(traceback.format_exc())
+                        st.caption("Gemini API 키 상태와 쿼리 한도를 다시 한번 점검해 주세요.")
+                        
     # ------------------------------------------------------------------
     # 테스트용 샘플 라벨 이미지 및 텍스트 제공 (확인 유틸리티)
     # ------------------------------------------------------------------
@@ -1806,72 +2028,6 @@ elif st.session_state.step == 2:
             st.code("정제수, 글리세린, 부틸렌글라이콜, 나이아신아마이드, 다이메티콘, 잔탄검, 히알루론산, 스쿠알란, 페녹시에탄올", language="text")
             st.caption("위 성분 텍스트를 복사하여 아래의 '반영할 전성분 리스트'에 직접 붙여넣거나, 라벨 이미지를 업로드하고 크롭하여 텍스트를 추출해 보세요.")
 
-    # ------------------------------------------------------------------
-    # 라벨 이미지 영역 지정 시 text 보여주고 수정 가능하게 (수정 가능 성분 텍스트 영역)
-    # ------------------------------------------------------------------
-    with st.container():
-        st.markdown('<div class="cfa-step2-full-marker"></div>', unsafe_allow_html=True)
-        st.markdown("#### 📝 반영할 전성분 리스트 (직접 수정 · 추가 · 삭제 가능)")
-        st.write("라벨 이미지에서 성분을 추출하거나 직접 입력하면 여기에 표시되며, 자유롭게 성분을 추가하거나 삭제하실 수 있습니다.")
-        
-        ingredients_txt = st.text_area(
-            "배합의 기본 뼈대가 될 성분 리스트 (쉼표로 구분)",
-            value=st.session_state.label_ingredients or "",
-            placeholder="예: 정제수, 글리세린, 부틸렌글라이콜, 나이아신아마이드 (또는 라벨 이미지를 올려 추출해 주세요)",
-            height=120,
-            label_visibility="collapsed",
-            key="ingredients_text_editor"
-        )
-        st.session_state.label_ingredients = ingredients_txt  # Sync back to state
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        # "AI 배합 실행" 버튼 (번개 표시 대신 AI 관련 🤖 아이콘, 화장품 관련 로딩 🧴 애니메이션)
-        if st.button("🤖 AI 배합 실행", type="primary", use_container_width=True):
-            placeholder = st.empty()
-            placeholder.markdown('''
-            <div class="liquid-glass cfa-loading-box">
-              <div class="cfa-ring-wrap">
-                <div class="cfa-ring"></div><div class="cfa-ring d2"></div>
-                <div class="cfa-core"></div><div class="cfa-core-inner">🧴</div>
-              </div>
-              <div class="cfa-loading-label">Gemini AI · SKINCARE FORMULATION</div>
-              <div class="cfa-loading-msg">원료 상용성 분석 및 맞춤형 스킨케어 배합 구성 중...</div>
-            </div>
-            ''', unsafe_allow_html=True)
-            try:
-                # 최종 수동 편집된 원료가 있으면 DB에 다시 병합
-                if ingredients_txt.strip():
-                    merge_extracted_into_db(ingredients_txt)
-
-                # 배합 생성
-                raw = generate_formulation(ftype, st.session_state.db, ingredients_txt.strip() or None)
-                st.session_state.raw_formulation = raw
-                
-                df = normalize_and_cost(raw["ingredients"], st.session_state.db)
-                st.session_state.formulation = df
-                
-                st.session_state.step = 3
-                placeholder.empty()
-                st.rerun()
-            except Exception as e:
-                placeholder.empty()
-                import traceback
-                err_str = str(e)
-                if "API_KEY_INVALID" in err_str or "API key not valid" in err_str or "400" in err_str:
-                    st.session_state.api_key = ""
-                    st.session_state.step = 0
-                    st.session_state.api_key_error_msg = "❌ 입력된 Gemini API 키가 올바르지 않거나 만료되었습니다. API 키를 재설정해 주세요."
-                    st.rerun()
-                else:
-                    st.error(f"처방 설계에 실패했습니다: {e}")
-                    with st.expander("🛠️ 상세 에러 로그 (디버깅용)"):
-                        st.code(traceback.format_exc())
-                    st.caption("Gemini API 키 상태와 쿼리 한도를 다시 한번 점검해 주세요.")
-
-# ------------------------------------------------------------------
-# STEP 3: 설계 결과 대시보드
-# ------------------------------------------------------------------
 elif st.session_state.step == 3:
     # Marker to hide magnifier lens on results page
     st.markdown('<div id="cfa-step3-active" style="display:none;"></div>', unsafe_allow_html=True)
