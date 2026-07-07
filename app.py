@@ -439,10 +439,24 @@ div[class*="stColumn"]:has(.cfa-tile-marker),
 div[data-testid="column"]:hover .cfa-icon-wrap,
 div[class*="stColumn"]:hover .cfa-icon-wrap,
 .stColumn:hover .cfa-icon-wrap {
-    background: radial-gradient(circle, rgba(0, 240, 255, 0.5) 0%, rgba(255, 0, 160, 0.4) 45%, rgba(255, 255, 255, 0.15) 65%, rgba(0,0,0,0) 80%) !important;
-    border-radius: 50% !important;
-    animation: cfaAuraPulse 2.0s infinite ease-in-out !important;
+    transform: scale(1.18) rotate(-4deg) !important;
+    position: relative !important;
 }
+
+.cfa-tile:hover .cfa-icon-wrap::before,
+div[data-testid="column"]:hover .cfa-icon-wrap::before,
+div[class*="stColumn"]:hover .cfa-icon-wrap::before,
+.stColumn:hover .cfa-icon-wrap::before {
+    content: "" !important;
+    position: absolute !important;
+    inset: -30px !important;
+    background: radial-gradient(circle, rgba(0, 240, 255, 0.65) 0%, rgba(255, 0, 160, 0.55) 40%, rgba(255, 255, 255, 0.25) 55%, rgba(0,0,0,0) 75%) !important;
+    border-radius: 50% !important;
+    z-index: -1 !important;
+    animation: cfaAuraPulse 1.8s infinite linear !important;
+    pointer-events: none !important;
+}
+
 .cfa-tile:hover .cfa-category-img,
 div[data-testid="column"]:hover .cfa-category-img,
 div[class*="stColumn"]:hover .cfa-category-img,
@@ -576,22 +590,31 @@ div[class*="st-key-btn_"] button {
     }
 }
 
-/* 빛 방사 백그라운드 아우라 애니메이션 (오로라 효과) */
+/* 빛 방사 백그라운드 아우라 애니메이션 (오로라 번짐 후 사라짐 효과) */
 @keyframes cfaAuraPulse {
     0% {
-        filter: hue-rotate(0deg) blur(5px) !important;
-        box-shadow: 0 0 30px rgba(0, 240, 255, 0.2), 0 0 50px rgba(255, 0, 160, 0.1) !important;
-        transform: scale(1.18) rotate(-4deg) !important;
+        transform: scale(0.6) rotate(0deg);
+        filter: hue-rotate(0deg) blur(10px);
+        box-shadow: 0 0 10px rgba(0, 240, 255, 0);
+        opacity: 0;
     }
-    50% {
-        filter: hue-rotate(180deg) blur(2px) !important;
-        box-shadow: 0 0 60px rgba(0, 240, 255, 0.8), 0 0 90px rgba(255, 0, 160, 0.7), 0 0 110px rgba(255, 255, 255, 0.4) !important;
-        transform: scale(1.23) rotate(2deg) !important;
+    30% {
+        transform: scale(1.1) rotate(100deg);
+        filter: hue-rotate(100deg) blur(5px);
+        box-shadow: 0 0 40px rgba(0, 240, 255, 0.65), 0 0 60px rgba(255, 0, 160, 0.55);
+        opacity: 0.95;
+    }
+    70% {
+        transform: scale(1.35) rotate(220deg);
+        filter: hue-rotate(220deg) blur(4px);
+        box-shadow: 0 0 50px rgba(0, 240, 255, 0.35), 0 0 70px rgba(255, 0, 160, 0.25);
+        opacity: 0.35;
     }
     100% {
-        filter: hue-rotate(360deg) blur(5px) !important;
-        box-shadow: 0 0 30px rgba(0, 240, 255, 0.2), 0 0 50px rgba(255, 0, 160, 0.1) !important;
-        transform: scale(1.18) rotate(-4deg) !important;
+        transform: scale(1.6) rotate(360deg);
+        filter: hue-rotate(360deg) blur(15px);
+        box-shadow: 0 0 80px rgba(0, 240, 255, 0), 0 0 100px rgba(255, 0, 160, 0);
+        opacity: 0;
     }
 }
 
@@ -752,24 +775,22 @@ textarea {
 .stFileUploader [role="button"] svg,
 [data-testid*="FileUploader"] button svg,
 [data-testid*="FileUploader"] label:not([data-testid="stWidgetLabel"]) svg,
-[data-testid*="FileUploader"] [role="button"] svg {
+[data-testid*="FileUploader"] [role="button"] svg,
+[data-testid*="FileUploaderIcon"] {
     display: none !important;
 }
-.stFileUploader label:not([data-testid="stWidgetLabel"]) span,
-.stFileUploader [role="button"] span,
-.stFileUploader button small,
-.stFileUploader label:not([data-testid="stWidgetLabel"]) small,
-.stFileUploader [role="button"] small,
-[data-testid*="FileUploader"] button span,
-[data-testid*="FileUploader"] label:not([data-testid="stWidgetLabel"]):not(.stWidgetLabel) span,
-[data-testid*="FileUploader"] [role="button"] span,
-[data-testid*="FileUploader"] button small,
-[data-testid*="FileUploader"] label:not([data-testid="stWidgetLabel"]):not(.stWidgetLabel) small,
-[data-testid*="FileUploader"] [role="button"] small {
+/* Force ALL elements inside the button except SVG to display inline-block and black (preventing hidden text) */
+.stFileUploader button *:not(svg):not(path),
+.stFileUploader label:not([data-testid="stWidgetLabel"]) *:not(svg):not(path),
+.stFileUploader [role="button"] *:not(svg):not(path),
+[data-testid*="FileUploader"] button *:not(svg):not(path),
+[data-testid*="FileUploader"] label:not([data-testid="stWidgetLabel"]) *:not(svg):not(path),
+[data-testid*="FileUploader"] [role="button"] *:not(svg):not(path) {
     display: inline-block !important;
     visibility: visible !important;
     opacity: 1 !important;
     color: #000000 !important;
+    fill: #000000 !important;
     font-size: 14px !important;
     font-weight: 600 !important;
 }
@@ -1599,16 +1620,94 @@ elif st.session_state.step == 2:
     st.caption("STEP 2")
     st.subheader(f"✨ {ftype['label']} 설계 조건 설정")
     
+    col_l, col_r = st.columns([1.2, 1])
+    
+    with col_l:
+        st.markdown('<div class="cfa-step2-marker"></div>', unsafe_allow_html=True)
+        st.markdown("#### 1. 기존 제품 라벨 이미지 업로드 (선택)")
+        st.write("이미지의 성분표 부분만 드래그하여 정확하게 지정하면, AI가 성분을 완벽히 파악해 맞춤 배합에 반영합니다.")
+        uploaded = st.file_uploader("라벨 이미지 업로드 (10MB 이하)", type=["png", "jpg", "jpeg"], key="label_file_uploader")
+        cropped_img = None
+
+        if uploaded is not None:
+            if uploaded.size > 10 * 1024 * 1024:
+                st.error("파일이 너무 큽니다. 10MB 이하의 이미지를 업로드해 주세요.")
+            else:
+                orig_img = Image.open(uploaded).convert("RGB")
+                st.caption("아래 박스의 모서리를 끌어 성분표 텍스트 영역만 알맞게 지정해 주세요.")
+                cropped_img = st_cropper(
+                    orig_img, realtime_update=True, box_color="#ff00a0",
+                    aspect_ratio=None, return_type="image"
+                )
+                st.session_state.label_original = orig_img
+        
+    with col_r:
+        st.markdown('<div class="cfa-step2-marker"></div>', unsafe_allow_html=True)
+        st.markdown("#### 2. 배합 설계 시작")
+        if cropped_img is not None:
+            st.write("선택된 성분표 크롭 영역:")
+            st.image(cropped_img, width=240)
+            st.session_state.label_crop = cropped_img
+            
+            # Button to trigger OCR
+            if st.button("🔍 지정 영역에서 성분 텍스트 추출", use_container_width=True):
+                with st.spinner("성분표 텍스트 분석 중..."):
+                    try:
+                        extracted = vision_extract_ingredients_from_crop(cropped_img)
+                        st.session_state.label_ingredients = extracted
+                        st.session_state.ingredients_text_editor = extracted  # Update text_area widget state value directly
+                        
+                        # 즉시 원료 단가 데이터베이스에도 누락된 원료 병합
+                        merge_extracted_into_db(extracted)
+                        
+                        st.success("성분이 추출되어 아래 텍스트 상자 및 원료 DB에 반영되었습니다!")
+                        st.rerun()
+                    except Exception as e:
+                        import traceback
+                        err_str = str(e)
+                        if "API_KEY_INVALID" in err_str or "API key not valid" in err_str or "400" in err_str:
+                            st.session_state.api_key = ""
+                            st.session_state.step = 0
+                            st.session_state.api_key_error_msg = "❌ 입력된 Gemini API 키가 올바르지 않거나 만료되었습니다. API 키를 재설정해 주세요."
+                            st.rerun()
+                        else:
+                            st.error(f"성분 추출에 실패했습니다: {e}")
+                            with st.expander("🛠️ 상세 에러 로그 (디버깅용)"):
+                                st.code(traceback.format_exc())
+        else:
+            st.write("업로드된 라벨이 없습니다. 원료 DB에 있는 성분들을 활용하여 **인공지능의 신규 배합 설계**를 바로 시작합니다.")
+            
+        st.markdown("<br>", unsafe_allow_html=True)
+
+    # ------------------------------------------------------------------
+    # 테스트용 샘플 라벨 이미지 및 텍스트 제공 (확인 유틸리티)
+    # ------------------------------------------------------------------
+    with st.expander("🧪 테스트용 샘플 라벨 정보 (이미지가 없는 경우 활용)"):
+        col_s1, col_s2 = st.columns([1, 2])
+        with col_s1:
+            sample_path = "sample_label.png"
+            if os.path.exists(sample_path):
+                st.image(sample_path, caption="샘플 라벨 이미지 (마우스 우클릭 다운로드 가능)", width=180)
+            else:
+                st.info("sample_label.png 파일이 프로젝트 폴더 내에 존재하지 않습니다.")
+        with col_s2:
+            st.write("📋 **추출 테스트용 성분 텍스트 (복사 가능):**")
+            st.code("정제수, 글리세린, 부틸렌글라이콜, 나이아신아마이드, 다이메티콘, 잔탄검, 히알루론산, 스쿠알란, 페녹시에탄올", language="text")
+            st.caption("위 성분 텍스트를 복사하여 아래의 '반영할 전성분 리스트'에 직접 붙여넣거나, 라벨 이미지를 업로드하고 크롭하여 텍스트를 추출해 보세요.")
+
+    # ------------------------------------------------------------------
+    # 라벨 이미지 영역 지정 시 text 보여주고 수정 가능하게 (수정 가능 성분 텍스트 영역)
+    # ------------------------------------------------------------------
     with st.container():
         st.markdown('<div class="cfa-step2-full-marker"></div>', unsafe_allow_html=True)
         st.markdown("#### 📝 반영할 전성분 리스트 (직접 수정 · 추가 · 삭제 가능)")
-        st.write("보유 원료 DB에 있는 성분들을 활용하여 배합 설계를 진행합니다. 원하는 특정 성분이 있다면 쉼표로 구분하여 적어주세요. 빈칸으로 두시면 AI가 제형에 맞는 최적의 성분들로 신규 처방을 설계합니다.")
+        st.write("라벨 이미지에서 성분을 추출하거나 직접 입력하면 여기에 표시되며, 자유롭게 성분을 추가하거나 삭제하실 수 있습니다.")
         
         ingredients_txt = st.text_area(
             "배합의 기본 뼈대가 될 성분 리스트 (쉼표로 구분)",
             value=st.session_state.label_ingredients or "",
-            placeholder="예: 정제수, 글리세린, 부틸렌글라이콜, 나이아신아마이드 (또는 빈칸으로 입력)",
-            height=180,
+            placeholder="예: 정제수, 글리세린, 부틸렌글라이콜, 나이아신아마이드 (또는 라벨 이미지를 올려 추출해 주세요)",
+            height=120,
             label_visibility="collapsed",
             key="ingredients_text_editor"
         )
@@ -1616,7 +1715,7 @@ elif st.session_state.step == 2:
         
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # "AI 배합 실행" 버튼
+        # "AI 배합 실행" 버튼 (번개 표시 대신 AI 관련 🤖 아이콘, 화장품 관련 로딩 🧴 애니메이션)
         if st.button("🤖 AI 배합 실행", type="primary", use_container_width=True):
             placeholder = st.empty()
             placeholder.markdown('''
@@ -1804,4 +1903,20 @@ elif st.session_state.step == 3:
                     else:
                         st.error(f"피드백 반영 수정에 실패했습니다: {e}")
 
-    pass
+    # ------------------------------------------------------------------
+    # 라벨 크롭 분석 데이터 원본 복원 및 표시
+    # ------------------------------------------------------------------
+    if st.session_state.label_ingredients:
+        st.markdown("<br>", unsafe_allow_html=True)
+        with st.expander("🔍 라벨 분석 정보 및 원본 대조"):
+            col_crop_l, col_crop_r = st.columns([1, 2])
+            with col_crop_l:
+                if st.session_state.label_crop:
+                    st.write("지정했던 전성분 크롭 이미지:")
+                    st.image(st.session_state.label_crop, use_container_width=True)
+                    if st.button("🔍 전체 원본 이미지 보기"):
+                        zoom_dialog(st.session_state.label_original, "업로드 원본 라벨 이미지")
+            with col_crop_r:
+                st.write("라벨에서 추출된 원본 성분 텍스트:")
+                st.info(st.session_state.label_ingredients)
+                st.caption("이 성분들 중 원료 데이터베이스에 없었던 원료는 자동으로 DB에 등록되었으며 단가 15원/g으로 가설정되었습니다.")
