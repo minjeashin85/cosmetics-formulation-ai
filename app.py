@@ -439,9 +439,9 @@ div[class*="stColumn"]:has(.cfa-tile-marker),
 div[data-testid="column"]:hover .cfa-icon-wrap,
 div[class*="stColumn"]:hover .cfa-icon-wrap,
 .stColumn:hover .cfa-icon-wrap {
-    transform: scale(1.18) rotate(-4deg) !important;
-    animation: cfaAuraPulse 1.6s infinite ease-in-out !important;
+    background: radial-gradient(circle, rgba(0, 240, 255, 0.5) 0%, rgba(255, 0, 160, 0.4) 45%, rgba(255, 255, 255, 0.15) 65%, rgba(0,0,0,0) 80%) !important;
     border-radius: 50% !important;
+    animation: cfaAuraPulse 2.0s infinite ease-in-out !important;
 }
 .cfa-tile:hover .cfa-category-img,
 div[data-testid="column"]:hover .cfa-category-img,
@@ -579,19 +579,19 @@ div[class*="st-key-btn_"] button {
 /* 빛 방사 백그라운드 아우라 애니메이션 (오로라 효과) */
 @keyframes cfaAuraPulse {
     0% {
-        background: radial-gradient(circle at 30% 30%, rgba(0, 240, 255, 0.3) 0%, rgba(255, 0, 160, 0.2) 50%, rgba(0,0,0,0) 75%) !important;
         filter: hue-rotate(0deg) blur(5px) !important;
         box-shadow: 0 0 30px rgba(0, 240, 255, 0.2), 0 0 50px rgba(255, 0, 160, 0.1) !important;
+        transform: scale(1.18) rotate(-4deg) !important;
     }
     50% {
-        background: radial-gradient(circle at 70% 70%, rgba(0, 240, 255, 0.6) 0%, rgba(255, 0, 160, 0.5) 40%, rgba(255, 255, 255, 0.2) 60%, rgba(0,0,0,0) 80%) !important;
         filter: hue-rotate(180deg) blur(2px) !important;
-        box-shadow: 0 0 50px rgba(0, 240, 255, 0.6), 0 0 80px rgba(255, 0, 160, 0.5), 0 0 100px rgba(255, 255, 255, 0.3) !important;
+        box-shadow: 0 0 60px rgba(0, 240, 255, 0.8), 0 0 90px rgba(255, 0, 160, 0.7), 0 0 110px rgba(255, 255, 255, 0.4) !important;
+        transform: scale(1.23) rotate(2deg) !important;
     }
     100% {
-        background: radial-gradient(circle at 30% 30%, rgba(0, 240, 255, 0.3) 0%, rgba(255, 0, 160, 0.2) 50%, rgba(0,0,0,0) 75%) !important;
         filter: hue-rotate(360deg) blur(5px) !important;
         box-shadow: 0 0 30px rgba(0, 240, 255, 0.2), 0 0 50px rgba(255, 0, 160, 0.1) !important;
+        transform: scale(1.18) rotate(-4deg) !important;
     }
 }
 
@@ -755,19 +755,6 @@ textarea {
 [data-testid*="FileUploader"] [role="button"] svg {
     display: none !important;
 }
-/* Force text tags to display as black and visible */
-.stFileUploader button *,
-.stFileUploader label:not([data-testid="stWidgetLabel"]):not(.stWidgetLabel) *,
-.stFileUploader [role="button"] *,
-.stFileUploader [data-testid="stUploadButton"] *,
-[data-testid*="FileUploader"] button *,
-[data-testid*="FileUploader"] label:not([data-testid="stWidgetLabel"]):not(.stWidgetLabel) *,
-[data-testid*="FileUploader"] [role="button"] *,
-[data-testid*="FileUploader"] [data-testid="stUploadButton"] * {
-    color: #000000 !important;
-    fill: #000000 !important;
-}
-.stFileUploader button span,
 .stFileUploader label:not([data-testid="stWidgetLabel"]) span,
 .stFileUploader [role="button"] span,
 .stFileUploader button small,
