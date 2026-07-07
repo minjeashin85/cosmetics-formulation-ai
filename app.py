@@ -1081,6 +1081,24 @@ def validate_api_key(api_key: str, model_name: str = "gemini-2.5-flash") -> tupl
         else:
             return False, f"API 키 검증 중 오류가 발생했습니다: {err_msg}"
 
+
+def handle_api_error(e, prefix="처방 설계에 실패했습니다"):
+    import traceback
+    err_str = str(e)
+    if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower() or "limit" in err_str.lower():
+        st.error(
+            f"❌ Gemini AI 호출 할당량(Quota)이 초과되었습니다 (429 RESOURCE_EXHAUSTED).\n\n"
+            f"**💡 해결 방법:**\n"
+            f"1. **모델 변경**: 상단 **'⚙️ 시스템 설정 및 원료 데이터베이스 관리'**에서 다른 모델(예: `gemini-2.5-pro` 또는 `gemini-2.5-flash`)로 변경해 보세요.\n"
+            f"2. **AI Studio 결제 등록**: Google AI Studio에서 카드 등록 후 종량제(Pay-as-you-go)로 업그레이드하시면 할당량 제한 없이 안정적으로 사용하실 수 있습니다.\n"
+            f"3. **대기 후 재시도**: 일일 무료 제공량 초과인 경우 한국 시간 오전 9시 전후로 리셋되거나, 분당 호출 한도 초과인 경우 약 1분 후 다시 시도해 주세요."
+        )
+    else:
+        st.error(f"{prefix}: {e}")
+        with st.expander("🛠️ 상세 에러 로그 (디버깅용)"):
+            st.code(traceback.format_exc())
+        st.caption("Gemini API 키 상태와 쿼리 한도를 다시 한번 점검해 주세요.")
+
 def get_client():
     return genai.Client(api_key=st.session_state.api_key)
 
@@ -1856,7 +1874,6 @@ elif st.session_state.step == 2:
                         st.success("성분이 추출되어 아래 텍스트 상자 및 원료 DB에 반영되었습니다!")
                         st.rerun()
                     except Exception as e:
-                        import traceback
                         err_str = str(e)
                         if "API_KEY_INVALID" in err_str or "API key not valid" in err_str or "400" in err_str:
                             st.session_state.api_key = ""
@@ -1864,9 +1881,7 @@ elif st.session_state.step == 2:
                             st.session_state.api_key_error_msg = "❌ 입력된 Gemini API 키가 올바르지 않거나 만료되었습니다. API 키를 재설정해 주세요."
                             st.rerun()
                         else:
-                            st.error(f"성분 추출에 실패했습니다: {e}")
-                            with st.expander("🛠️ 상세 에러 로그 (디버깅용)"):
-                                st.code(traceback.format_exc())
+                            handle_api_error(e, "성분 추출에 실패했습니다")
                                 
     # Underneath, full width ingredients text editor
     with st.container():
@@ -1942,7 +1957,7 @@ elif st.session_state.step == 2:
                         st.rerun()
                     except Exception as e:
                         placeholder.empty()
-                        st.error(f"보완 처방 설계에 실패했습니다: {e}")
+                        handle_api_error(e, "보완 처방 설계에 실패했습니다")
             with col_err2:
                 if st.button("📝 성분 목록 직접 수정하기", use_container_width=True):
                     del st.session_state.feasibility_error
@@ -1999,7 +2014,6 @@ elif st.session_state.step == 2:
                     st.rerun()
                 except Exception as e:
                     placeholder.empty()
-                    import traceback
                     err_str = str(e)
                     if "API_KEY_INVALID" in err_str or "API key not valid" in err_str or "400" in err_str:
                         st.session_state.api_key = ""
@@ -2007,10 +2021,7 @@ elif st.session_state.step == 2:
                         st.session_state.api_key_error_msg = "❌ 입력된 Gemini API 키가 올바르지 않거나 만료되었습니다. API 키를 재설정해 주세요."
                         st.rerun()
                     else:
-                        st.error(f"처방 설계에 실패했습니다: {e}")
-                        with st.expander("🛠️ 상세 에러 로그 (디버깅용)"):
-                            st.code(traceback.format_exc())
-                        st.caption("Gemini API 키 상태와 쿼리 한도를 다시 한번 점검해 주세요.")
+                        handle_api_error(e, "처방 설계에 실패했습니다")
                         
     # ------------------------------------------------------------------
     # 테스트용 샘플 라벨 이미지 및 텍스트 제공 (확인 유틸리티)
@@ -2365,7 +2376,7 @@ elif st.session_state.step == 3:
                         st.session_state.api_key_error_msg = "❌ 입력된 Gemini API 키가 올바르지 않거나 만료되었습니다. API 키를 재설정해 주세요."
                         st.rerun()
                     else:
-                        st.error(f"피드백 반영 수정에 실패했습니다: {e}")
+                        handle_api_error(e, "피드백 반영 수정에 실패했습니다")
 
     # ------------------------------------------------------------------
     # 라벨 크롭 분석 데이터 원본 복원 및 표시
