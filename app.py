@@ -544,21 +544,33 @@ div[class*="st-key-btn_"] button {
     border-radius: 24px !important;
 }
 
-/* 3D 이미지 빛나는 호버 애니메이션 */
+/* 3D 이미지 빛나는 호버 애니메이션 (초강력 네온 블루밍 기법) */
 @keyframes cfaGlowPulse {
     0% {
         transform: translateY(-4px) scale(1.04);
-        filter: drop-shadow(0 8px 12px rgba(0,0,0,0.4)) drop-shadow(0 0 10px rgba(255, 0, 160, 0.25)) brightness(1);
+        filter: 
+            drop-shadow(0 8px 12px rgba(0,0,0,0.4)) 
+            drop-shadow(0 0 10px rgba(255, 0, 160, 0.35)) 
+            brightness(1);
     }
     50% {
-        transform: translateY(-12px) scale(1.1);
-        filter: drop-shadow(0 18px 30px rgba(0,0,0,0.6)) drop-shadow(0 0 35px rgba(255, 0, 160, 0.75)) drop-shadow(0 0 45px rgba(255, 255, 255, 0.35)) brightness(1.28);
+        transform: translateY(-14px) scale(1.15);
+        filter: 
+            drop-shadow(0 20px 35px rgba(0,0,0,0.6)) 
+            drop-shadow(0 0 30px rgba(255, 0, 160, 0.95)) 
+            drop-shadow(0 0 50px rgba(0, 240, 255, 0.65)) 
+            drop-shadow(0 0 75px rgba(255, 255, 255, 0.55)) 
+            brightness(1.55);
     }
     100% {
         transform: translateY(-4px) scale(1.04);
-        filter: drop-shadow(0 8px 12px rgba(0,0,0,0.4)) drop-shadow(0 0 10px rgba(255, 0, 160, 0.25)) brightness(1);
+        filter: 
+            drop-shadow(0 8px 12px rgba(0,0,0,0.4)) 
+            drop-shadow(0 0 10px rgba(255, 0, 160, 0.35)) 
+            brightness(1);
     }
 }
+
 
 /* SVG 아이콘 내부 부품 호버 애니메이션 */
 @keyframes cfaWobble { 0%{transform:rotate(0);} 25%{transform:rotate(-4deg);} 50%{transform:rotate(3deg);} 75%{transform:rotate(-1.5deg);} 100%{transform:rotate(0);} }
