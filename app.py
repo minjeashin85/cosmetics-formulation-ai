@@ -684,12 +684,14 @@ textarea {
     background-color: #ffffff !important;
     color: #000000 !important;
 }
-[data-testid="stFileUploaderDropzone"] button {
+[data-testid="stFileUploaderDropzone"] button,
+[data-testid="stFileUploader"] button {
     background-color: #ffffff !important;
-    color: #000000 !important;
 }
-[data-testid="stFileUploaderDropzone"] button * {
+[data-testid="stFileUploaderDropzone"] button *,
+[data-testid="stFileUploader"] button * {
     color: #000000 !important;
+    fill: #000000 !important;
 }
 </style>
 """, unsafe_allow_html=True)
