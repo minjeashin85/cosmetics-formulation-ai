@@ -434,16 +434,19 @@ div[class*="stColumn"]:has(.cfa-tile-marker),
     filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 10px rgba(255, 0, 160, 0.15)) !important;
     transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.5s ease !important;
 }
-div[data-testid="column"]:has(.cfa-tile-marker):hover .cfa-icon-wrap,
-div[class*="stColumn"]:has(.cfa-tile-marker):hover .cfa-icon-wrap,
-.stColumn:has(.cfa-tile-marker):hover .cfa-icon-wrap {
+/* Hover animations using simpler, more compatible column and tile selectors */
+.cfa-tile:hover .cfa-icon-wrap,
+div[data-testid="column"]:hover .cfa-icon-wrap,
+div[class*="stColumn"]:hover .cfa-icon-wrap,
+.stColumn:hover .cfa-icon-wrap {
     transform: scale(1.18) rotate(-4deg) !important;
     animation: cfaAuraPulse 1.6s infinite ease-in-out !important;
     border-radius: 50% !important;
 }
-div[data-testid="column"]:has(.cfa-tile-marker):hover .cfa-category-img,
-div[class*="stColumn"]:has(.cfa-tile-marker):hover .cfa-category-img,
-.stColumn:has(.cfa-tile-marker):hover .cfa-category-img {
+.cfa-tile:hover .cfa-category-img,
+div[data-testid="column"]:hover .cfa-category-img,
+div[class*="stColumn"]:hover .cfa-category-img,
+.stColumn:hover .cfa-category-img {
     animation: cfaGlowPulse 1.6s infinite ease-in-out !important;
 }
 .cfa-name-pill {
@@ -726,23 +729,31 @@ textarea {
     background-color: #ffffff !important;
     color: #000000 !important;
 }
-[data-testid="stFileUploader"] button,
-[data-testid="stFileUploader"] label:not([data-testid="stWidgetLabel"]),
-[data-testid="stFileUploader"] [role="button"],
-[data-testid="stFileUploader"] [data-testid="stUploadButton"] {
+.stFileUploader button,
+.stFileUploader label:not([data-testid="stWidgetLabel"]):not(.stWidgetLabel),
+.stFileUploader [role="button"],
+.stFileUploader [data-testid="stUploadButton"],
+[data-testid*="FileUploader"] button,
+[data-testid*="FileUploader"] label:not([data-testid="stWidgetLabel"]):not(.stWidgetLabel),
+[data-testid*="FileUploader"] [role="button"],
+[data-testid*="FileUploader"] [data-testid="stUploadButton"] {
     background-color: #ffffff !important;
     color: #000000 !important;
 }
-[data-testid="stFileUploader"] button *,
-[data-testid="stFileUploader"] label:not([data-testid="stWidgetLabel"]) *,
-[data-testid="stFileUploader"] [role="button"] *,
-[data-testid="stFileUploader"] [data-testid="stUploadButton"] *,
-[data-testid="stFileUploader"] button span,
-[data-testid="stFileUploader"] label:not([data-testid="stWidgetLabel"]) span,
-[data-testid="stFileUploader"] [role="button"] span,
-[data-testid="stFileUploader"] button small,
-[data-testid="stFileUploader"] label:not([data-testid="stWidgetLabel"]) small,
-[data-testid="stFileUploader"] [role="button"] small {
+.stFileUploader button *,
+.stFileUploader label:not([data-testid="stWidgetLabel"]):not(.stWidgetLabel) *,
+.stFileUploader [role="button"] *,
+.stFileUploader [data-testid="stUploadButton"] *,
+[data-testid*="FileUploader"] button *,
+[data-testid*="FileUploader"] label:not([data-testid="stWidgetLabel"]):not(.stWidgetLabel) *,
+[data-testid*="FileUploader"] [role="button"] *,
+[data-testid*="FileUploader"] [data-testid="stUploadButton"] *,
+[data-testid*="FileUploader"] button span,
+[data-testid*="FileUploader"] label:not([data-testid="stWidgetLabel"]):not(.stWidgetLabel) span,
+[data-testid*="FileUploader"] [role="button"] span,
+[data-testid*="FileUploader"] button small,
+[data-testid*="FileUploader"] label:not([data-testid="stWidgetLabel"]):not(.stWidgetLabel) small,
+[data-testid*="FileUploader"] [role="button"] small {
     color: #000000 !important;
     fill: #000000 !important;
 }
