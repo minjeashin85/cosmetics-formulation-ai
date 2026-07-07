@@ -438,6 +438,8 @@ div[data-testid="column"]:has(.cfa-tile-marker):hover .cfa-icon-wrap,
 div[class*="stColumn"]:has(.cfa-tile-marker):hover .cfa-icon-wrap,
 .stColumn:has(.cfa-tile-marker):hover .cfa-icon-wrap {
     transform: scale(1.18) rotate(-4deg) !important;
+    animation: cfaAuraPulse 1.6s infinite ease-in-out !important;
+    border-radius: 50% !important;
 }
 div[data-testid="column"]:has(.cfa-tile-marker):hover .cfa-category-img,
 div[class*="stColumn"]:has(.cfa-tile-marker):hover .cfa-category-img,
@@ -544,30 +546,43 @@ div[class*="st-key-btn_"] button {
     border-radius: 24px !important;
 }
 
-/* 3D 이미지 빛나는 호버 애니메이션 (초강력 네온 블루밍 기법) */
+/* 3D 이미지 빛을 뿜어내는 호버 애니메이션 (초강력 네온 블루밍 기법) */
 @keyframes cfaGlowPulse {
     0% {
         transform: translateY(-4px) scale(1.04);
         filter: 
             drop-shadow(0 8px 12px rgba(0,0,0,0.4)) 
-            drop-shadow(0 0 10px rgba(255, 0, 160, 0.35)) 
-            brightness(1);
+            drop-shadow(0 0 15px rgba(255, 0, 160, 0.4)) 
+            brightness(1.05);
     }
     50% {
-        transform: translateY(-14px) scale(1.15);
+        transform: translateY(-16px) scale(1.18);
         filter: 
-            drop-shadow(0 20px 35px rgba(0,0,0,0.6)) 
-            drop-shadow(0 0 30px rgba(255, 0, 160, 0.95)) 
-            drop-shadow(0 0 50px rgba(0, 240, 255, 0.65)) 
-            drop-shadow(0 0 75px rgba(255, 255, 255, 0.55)) 
-            brightness(1.55);
+            drop-shadow(0 25px 40px rgba(0,0,0,0.65)) 
+            drop-shadow(0 0 35px rgba(255, 0, 160, 1)) 
+            drop-shadow(0 0 60px rgba(0, 240, 255, 0.9)) 
+            drop-shadow(0 0 85px rgba(255, 255, 255, 0.8)) 
+            brightness(1.75);
     }
     100% {
         transform: translateY(-4px) scale(1.04);
         filter: 
             drop-shadow(0 8px 12px rgba(0,0,0,0.4)) 
-            drop-shadow(0 0 10px rgba(255, 0, 160, 0.35)) 
-            brightness(1);
+            drop-shadow(0 0 15px rgba(255, 0, 160, 0.4)) 
+            brightness(1.05);
+    }
+}
+
+/* 빛 방사 백그라운드 아우라 애니메이션 */
+@keyframes cfaAuraPulse {
+    0% {
+        background: radial-gradient(circle, rgba(255, 0, 160, 0.18) 0%, rgba(255, 0, 160, 0) 60%) !important;
+    }
+    50% {
+        background: radial-gradient(circle, rgba(255, 0, 160, 0.75) 0%, rgba(255, 0, 160, 0) 75%) !important;
+    }
+    100% {
+        background: radial-gradient(circle, rgba(255, 0, 160, 0.18) 0%, rgba(255, 0, 160, 0) 60%) !important;
     }
 }
 
@@ -711,36 +726,22 @@ textarea {
     background-color: #ffffff !important;
     color: #000000 !important;
 }
-[data-testid="stFileUploaderDropzone"] button,
-[data-testid="stFileUploaderDropzone"] label,
-[data-testid="stFileUploaderDropzone"] [role="button"],
-[data-testid="stFileUploaderDropzone"] [data-testid="stFileUploaderButton"],
 [data-testid="stFileUploader"] button,
-[data-testid="stFileUploader"] label,
-[data-testid="stFileUploader"] [role="button"] {
+[data-testid="stFileUploader"] label:not([data-testid="stWidgetLabel"]),
+[data-testid="stFileUploader"] [role="button"],
+[data-testid="stFileUploader"] [data-testid="stUploadButton"] {
     background-color: #ffffff !important;
     color: #000000 !important;
 }
-[data-testid="stFileUploaderDropzone"] button *,
-[data-testid="stFileUploaderDropzone"] label *,
-[data-testid="stFileUploaderDropzone"] [role="button"] *,
-[data-testid="stFileUploaderDropzone"] [data-testid="stFileUploaderButton"] *,
 [data-testid="stFileUploader"] button *,
-[data-testid="stFileUploader"] label *,
+[data-testid="stFileUploader"] label:not([data-testid="stWidgetLabel"]) *,
 [data-testid="stFileUploader"] [role="button"] *,
-[data-testid="stFileUploaderDropzone"] button span,
-[data-testid="stFileUploaderDropzone"] label span,
-[data-testid="stFileUploaderDropzone"] [role="button"] span,
-[data-testid="stFileUploaderDropzone"] [data-testid="stFileUploaderButton"] span,
-[data-testid="stFileUploaderDropzone"] button small,
-[data-testid="stFileUploaderDropzone"] label small,
-[data-testid="stFileUploaderDropzone"] [role="button"] small,
-[data-testid="stFileUploaderDropzone"] [data-testid="stFileUploaderButton"] small,
+[data-testid="stFileUploader"] [data-testid="stUploadButton"] *,
 [data-testid="stFileUploader"] button span,
-[data-testid="stFileUploader"] label span,
+[data-testid="stFileUploader"] label:not([data-testid="stWidgetLabel"]) span,
 [data-testid="stFileUploader"] [role="button"] span,
 [data-testid="stFileUploader"] button small,
-[data-testid="stFileUploader"] label small,
+[data-testid="stFileUploader"] label:not([data-testid="stWidgetLabel"]) small,
 [data-testid="stFileUploader"] [role="button"] small {
     color: #000000 !important;
     fill: #000000 !important;
