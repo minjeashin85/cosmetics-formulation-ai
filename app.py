@@ -562,10 +562,10 @@ div[class*="st-key-btn_"] button {
         transform: translateY(-16px) scale(1.18);
         filter: 
             drop-shadow(0 25px 40px rgba(0,0,0,0.65)) 
-            drop-shadow(0 0 35px rgba(255, 0, 160, 1)) 
-            drop-shadow(0 0 60px rgba(0, 240, 255, 0.9)) 
-            drop-shadow(0 0 85px rgba(255, 255, 255, 0.8)) 
-            brightness(1.75);
+            drop-shadow(0 0 40px rgba(0, 240, 255, 0.95)) 
+            drop-shadow(0 0 70px rgba(255, 0, 160, 0.85)) 
+            drop-shadow(0 0 100px rgba(255, 255, 255, 0.6)) 
+            brightness(1.65);
     }
     100% {
         transform: translateY(-4px) scale(1.04);
@@ -576,16 +576,22 @@ div[class*="st-key-btn_"] button {
     }
 }
 
-/* 빛 방사 백그라운드 아우라 애니메이션 */
+/* 빛 방사 백그라운드 아우라 애니메이션 (오로라 효과) */
 @keyframes cfaAuraPulse {
     0% {
-        background: radial-gradient(circle, rgba(255, 0, 160, 0.18) 0%, rgba(255, 0, 160, 0) 60%) !important;
+        background: radial-gradient(circle at 30% 30%, rgba(0, 240, 255, 0.3) 0%, rgba(255, 0, 160, 0.2) 50%, rgba(0,0,0,0) 75%) !important;
+        filter: hue-rotate(0deg) blur(5px) !important;
+        box-shadow: 0 0 30px rgba(0, 240, 255, 0.2), 0 0 50px rgba(255, 0, 160, 0.1) !important;
     }
     50% {
-        background: radial-gradient(circle, rgba(255, 0, 160, 0.75) 0%, rgba(255, 0, 160, 0) 75%) !important;
+        background: radial-gradient(circle at 70% 70%, rgba(0, 240, 255, 0.6) 0%, rgba(255, 0, 160, 0.5) 40%, rgba(255, 255, 255, 0.2) 60%, rgba(0,0,0,0) 80%) !important;
+        filter: hue-rotate(180deg) blur(2px) !important;
+        box-shadow: 0 0 50px rgba(0, 240, 255, 0.6), 0 0 80px rgba(255, 0, 160, 0.5), 0 0 100px rgba(255, 255, 255, 0.3) !important;
     }
     100% {
-        background: radial-gradient(circle, rgba(255, 0, 160, 0.18) 0%, rgba(255, 0, 160, 0) 60%) !important;
+        background: radial-gradient(circle at 30% 30%, rgba(0, 240, 255, 0.3) 0%, rgba(255, 0, 160, 0.2) 50%, rgba(0,0,0,0) 75%) !important;
+        filter: hue-rotate(360deg) blur(5px) !important;
+        box-shadow: 0 0 30px rgba(0, 240, 255, 0.2), 0 0 50px rgba(255, 0, 160, 0.1) !important;
     }
 }
 
@@ -740,6 +746,16 @@ textarea {
     background-color: #ffffff !important;
     color: #000000 !important;
 }
+/* Hide the SVG upload icon inside the button */
+.stFileUploader button svg,
+.stFileUploader label:not([data-testid="stWidgetLabel"]) svg,
+.stFileUploader [role="button"] svg,
+[data-testid*="FileUploader"] button svg,
+[data-testid*="FileUploader"] label:not([data-testid="stWidgetLabel"]) svg,
+[data-testid*="FileUploader"] [role="button"] svg {
+    display: none !important;
+}
+/* Force text tags to display as black and visible */
 .stFileUploader button *,
 .stFileUploader label:not([data-testid="stWidgetLabel"]):not(.stWidgetLabel) *,
 .stFileUploader [role="button"] *,
@@ -747,15 +763,28 @@ textarea {
 [data-testid*="FileUploader"] button *,
 [data-testid*="FileUploader"] label:not([data-testid="stWidgetLabel"]):not(.stWidgetLabel) *,
 [data-testid*="FileUploader"] [role="button"] *,
-[data-testid*="FileUploader"] [data-testid="stUploadButton"] *,
+[data-testid*="FileUploader"] [data-testid="stUploadButton"] * {
+    color: #000000 !important;
+    fill: #000000 !important;
+}
+.stFileUploader button span,
+.stFileUploader label:not([data-testid="stWidgetLabel"]) span,
+.stFileUploader [role="button"] span,
+.stFileUploader button small,
+.stFileUploader label:not([data-testid="stWidgetLabel"]) small,
+.stFileUploader [role="button"] small,
 [data-testid*="FileUploader"] button span,
 [data-testid*="FileUploader"] label:not([data-testid="stWidgetLabel"]):not(.stWidgetLabel) span,
 [data-testid*="FileUploader"] [role="button"] span,
 [data-testid*="FileUploader"] button small,
 [data-testid*="FileUploader"] label:not([data-testid="stWidgetLabel"]):not(.stWidgetLabel) small,
 [data-testid*="FileUploader"] [role="button"] small {
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
     color: #000000 !important;
-    fill: #000000 !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
 }
 </style>
 """, unsafe_allow_html=True)
