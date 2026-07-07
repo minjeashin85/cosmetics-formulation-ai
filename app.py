@@ -794,6 +794,54 @@ textarea {
     font-size: 14px !important;
     font-weight: 600 !important;
 }
+/* 9점 척도법 카드 스타일 */
+.cfa-score-card {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 0, 160, 0.1);
+    padding: 12px 16px;
+    margin-bottom: 10px;
+    transition: transform 0.3s ease, border-color 0.3s ease, background-color 0.3s ease;
+}
+.cfa-score-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 0, 160, 0.4);
+    background: rgba(255, 255, 255, 0.06);
+}
+.cfa-score-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+.cfa-score-title {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #ffffff;
+}
+.cfa-score-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: #ff00a0;
+}
+.cfa-score-bar-bg {
+    width: 100%;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+.cfa-score-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #00f0ff, #ff00a0);
+    border-radius: 3px;
+}
+.cfa-score-desc {
+    font-size: 11.5px;
+    color: rgba(255, 255, 255, 0.65);
+    line-height: 1.3;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -1080,6 +1128,68 @@ class IngredientItem(BaseModel):
     function: str = Field(description="원료의 효능 및 기능")
     ratio: float = Field(description="배합비 상대적 비율 수치 (양수)")
 
+class EvaluationScores(BaseModel):
+    spreadability: int = Field(description="발림성 평가 점수 (1~9점)")
+    absorbability: int = Field(description="흡수성 평가 점수 (1~9점)")
+    stickiness: int = Field(description="끈적임 / 잔여감 평가 점수 (1~9점)")
+    oiliness: int = Field(description="유분감 / 번들거림 평가 점수 (1~9점)")
+    moistness: int = Field(description="수분감 / 촉촉함 평가 점수 (1~9점)")
+    adhesion: int = Field(description="밀착감 평가 점수 (1~9점)")
+
+class FormulationResult(BaseModel):
+    ingredients: list[IngredientItem] = Field(description="배합 원료 리스트")
+    scores: EvaluationScores = Field(description="6대 제형 특성의 9점 척도 평가 결과")
+
+def get_9point_description(item_name, score):
+    # Map item to positive and negative traits
+    traits = {
+        "발림성": ("잘 발림", "뻑뻑함"),
+        "흡수성": ("빠르게 스며듦", "겉돎"),
+        "끈적임 / 잔여감": ("끈적임/잔여감 있음", "산뜻함"),
+        "유분감 / 번들거림": ("유분감/번들거림 있음", "보송함/매트함"),
+        "수분감 / 촉촉함": ("촉촉함/수분감 있음", "건조함"),
+        "밀착감": ("잘 밀착됨", "들뜸")
+    }
+    
+    pos, neg = traits.get(item_name, ("있음", "없음"))
+    
+    if score >= 9:
+        return f"9점: 매우 {pos}"
+    elif score == 8:
+        return f"8점: 상당히 {pos}"
+    elif score == 7:
+        return f"7점: 보통 이상으로 {pos}"
+    elif score == 6:
+        return f"6점: 약간 {pos}"
+    elif score == 5:
+        return "5점: 보통 (Neither/Neutral)"
+    elif score == 4:
+        return f"4점: 약간 {neg}"
+    elif score == 3:
+        return f"3점: 보통 이상으로 {neg}"
+    elif score == 2:
+        return f"2점: 상당히 {neg}"
+    elif score <= 1:
+        return f"1점: 전혀 {pos} / 매우 {neg}"
+    return f"{score}점"
+
+def render_score_card_html(label, score_key, display_name, raw_scores):
+    score = raw_scores.get(score_key, 5)
+    pct = (score / 9.0) * 100
+    desc = get_9point_description(display_name, score)
+    return f'''
+    <div class="cfa-score-card">
+      <div class="cfa-score-header">
+        <span class="cfa-score-title">{label}</span>
+        <span class="cfa-score-value">{score}점</span>
+      </div>
+      <div class="cfa-score-bar-bg">
+        <div class="cfa-score-bar-fill" style="width: {pct}%;"></div>
+      </div>
+      <div class="cfa-score-desc">{desc}</div>
+    </div>
+    '''
+
 def generate_formulation(ftype, db_df, existing_ingredients=None):
     client = get_client()
     db_names = db_df["name"].tolist()
@@ -1089,14 +1199,14 @@ def generate_formulation(ftype, db_df, existing_ingredients=None):
 검출 성분: {existing_ingredients}
 
 ★ [필수 요구사항] ★
-1. 위 '검출 성분' 목록에 나열된 모든 성분들을 100% 빠짐없이 최종 배합 처방(Formulation)에 포함해야 합니다. 임의로 제외하거나 무시해서는 안 됩니다.
+1. 위 '검출 성분' 목록에 나열된 모든 성분들을 100% 빠짐없이 최종 배합 처방(ingredients)에 포함해야 합니다. 임의로 제외하거나 무시해서는 안 됩니다.
 2. 검출 성분 중 보유 원료 DB에 있는 성분과 이름이 유사하거나 동의어인 경우(예: 'Water' -> '정제수', 'Sodium Hyaluronate' -> '히알루론산'), 단가 매칭을 위해 반드시 보유 원료 DB의 이름으로 매칭하여 배합 처방에 사용해 주세요.
 3. 검출 성분 중 보유 원료 DB에 전혀 등록되어 있지 않은 성분이라도, 절대 누락하지 말고 배합 처방에 새 원료명 그대로 추가하고 그 기능을 한국어로 성질에 맞게 유추하여 작성하세요.
 4. 배합 비율(ratio)은 제형 특성에 맞추어 자유롭게 배분하되, 전체 원료 목록 자체는 검출된 성분을 전원 유지해야 합니다."""
     else:
         base_instruction = "기존 라벨 정보 없음. 아래 보유 원료 DB를 참고해서 신규 배합으로 설계해라."
 
-    prompt = f"""너는 화장품 처방 개발 전문가임. 아래 조건으로 화장품 배합(Formulation)을 설계해줘.
+    prompt = f"""너는 화장품 처방 개발 전문가임. 아래 조건으로 화장품 배합(ingredients)을 설계하고, 완성된 제형에 대해 9점 척도법(scores)으로 6대 품질 특성을 엄격히 평가하여 그 결과를 제공해줘.
 
 제형 종류: {ftype['label']}
 
@@ -1111,7 +1221,7 @@ def generate_formulation(ftype, db_df, existing_ingredients=None):
         contents=[prompt],
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
-            response_schema=list[IngredientItem]
+            response_schema=FormulationResult
         )
     )
     return json.loads(resp.text)
@@ -1121,11 +1231,11 @@ def refine_formulation(ftype, db_df, current_raw_formulation, feedback_text):
     client = get_client()
     db_names = db_df["name"].tolist()
     
-    prompt = f"""너는 화장품 처방 개발 전문가임. 기존에 설계된 배합표에 사용자의 피드백을 반영하여 성분 및 배합 비율을 커스텀 수정해줘.
+    prompt = f"""너는 화장품 처방 개발 전문가임. 기존에 설계된 배합표와 평가 점수에 사용자의 피드백을 반영하여 성분 및 배합 비율을 커스텀 수정하고, 수정된 처방에 따른 9점 척도 평가 점수를 다시 산출해줘.
 
 제형 종류: {ftype['label']}
 
-기존 배합표 데이터 (JSON):
+기존 배합표 및 평가 점수 데이터 (JSON):
 {json.dumps(current_raw_formulation, ensure_ascii=False, indent=2)}
 
 사용자 피드백 (요구사항):
@@ -1140,7 +1250,7 @@ def refine_formulation(ftype, db_df, current_raw_formulation, feedback_text):
         contents=[prompt],
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
-            response_schema=list[IngredientItem]
+            response_schema=FormulationResult
         )
     )
     return json.loads(resp.text)
@@ -1542,7 +1652,8 @@ if st.session_state.step >= 1:
         if not edited.equals(st.session_state.db):
             st.session_state.db = edited
             if st.session_state.raw_formulation is not None:
-                st.session_state.formulation = normalize_and_cost(st.session_state.raw_formulation, edited)
+                raw_items = st.session_state.raw_formulation["ingredients"] if isinstance(st.session_state.raw_formulation, dict) else st.session_state.raw_formulation
+                st.session_state.formulation = normalize_and_cost(raw_items, edited)
             st.rerun()
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -1737,7 +1848,7 @@ elif st.session_state.step == 2:
                 raw = generate_formulation(ftype, st.session_state.db, ingredients_txt.strip() or None)
                 st.session_state.raw_formulation = raw
                 
-                df = normalize_and_cost(raw, st.session_state.db)
+                df = normalize_and_cost(raw["ingredients"], st.session_state.db)
                 st.session_state.formulation = df
                 
                 st.session_state.step = 3
@@ -1848,24 +1959,223 @@ elif st.session_state.step == 3:
             st.markdown("#### 🔵 성분 다이어그램")
             components.html(render_donut_html(df), height=570, scrolling=False)
 
+    # 9점 척도법 평가 UI를 컬럼 밖(성분 다이어그램 아래)으로 빼서 전체 가로폭으로 배치
+    st.markdown("<br>", unsafe_allow_html=True)
+    raw_scores = {}
+    if isinstance(st.session_state.raw_formulation, dict):
+        raw_scores = st.session_state.raw_formulation.get("scores", {})
+        if hasattr(raw_scores, "model_dump"):
+            raw_scores = raw_scores.model_dump()
+    
+    # Defensive check
+    for key in ["spreadability", "absorbability", "stickiness", "oiliness", "moistness", "adhesion"]:
+        if key not in raw_scores:
+            raw_scores[key] = 5
+            
+    st.markdown("#### 🧪 제형 품질 평가 (표준 9점 척도법)")
+    st.write("처방의 배합비와 성질을 바탕으로 인공지능이 감촉 및 제형 특성을 9점 척도로 정밀 평가한 결과입니다.")
+    
+    col_scores_l, col_scores_r = st.columns(2)
+    with col_scores_l:
+        st.markdown(render_score_card_html("발림성 (Spreadability)", "spreadability", "발림성", raw_scores), unsafe_allow_html=True)
+        st.markdown(render_score_card_html("흡수성 (Absorbability)", "absorbability", "흡수성", raw_scores), unsafe_allow_html=True)
+        st.markdown(render_score_card_html("끈적임 / 잔여감 (Stickiness / Residue)", "stickiness", "끈적임 / 잔여감", raw_scores), unsafe_allow_html=True)
+    with col_scores_r:
+        st.markdown(render_score_card_html("유분감 / 번들거림 (Oiliness)", "oiliness", "유분감 / 번들거림", raw_scores), unsafe_allow_html=True)
+        st.markdown(render_score_card_html("수분감 / 촉촉함 (Moistness)", "moistness", "수분감 / 촉촉함", raw_scores), unsafe_allow_html=True)
+        st.markdown(render_score_card_html("밀착감 (Adhesion)", "adhesion", "밀착감", raw_scores), unsafe_allow_html=True)
+
+    # 9점 척도법 기준 및 정의 설명 가이드 배치
+    with st.expander("📖 표준 9점 척도법 평가 기준 및 항목 안내"):
+        st.markdown("""
+        <style>
+        .cfa-guide-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 0, 160, 0.12);
+        }
+        .cfa-guide-table th, .cfa-guide-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .cfa-guide-table th {
+            background: rgba(255,0,160,0.1);
+            color: #ffffff;
+            font-size: 13.5px;
+            font-weight: 600;
+        }
+        .cfa-guide-table td {
+            color: rgba(255,255,255,0.85);
+            font-size: 13px;
+        }
+        .cfa-guide-table tr:last-child td {
+            border-bottom: none;
+        }
+        .cfa-guide-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #ffffff;
+            background: rgba(255,0,160,0.25);
+        }
+        .cfa-guide-scale-box {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .cfa-guide-scale-item {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 12px;
+            color: rgba(255,255,255,0.85);
+        }
+        .cfa-guide-scale-num {
+            font-size: 14px;
+            font-weight: 700;
+            color: #ff00a0;
+            margin-right: 5px;
+        }
+        @media (max-width: 768px) {
+            .cfa-guide-scale-box {
+                grid-template-columns: 1fr;
+            }
+        }
+        </style>
+        
+        <h5>1) 주요 평가 항목 및 제형 요소</h5>
+        <table class="cfa-guide-table">
+          <thead>
+            <tr>
+              <th style="width: 30%;">항목명</th>
+              <th style="width: 70%;">상세 정의 및 설명</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="cfa-guide-badge">발림성 (Spreadability)</span></td>
+              <td>피부에 도포할 때 뻑뻑함 없이 매끄럽게 펴 발리는 정도</td>
+            </tr>
+            <tr>
+              <td><span class="cfa-guide-badge">흡수성 (Absorbability)</span></td>
+              <td>제형이 피부 표면에 남지 않고 빠르게 스며드는 정도</td>
+            </tr>
+            <tr>
+              <td><span class="cfa-guide-badge">끈적임 / 잔여감 (Stickiness / Residue)</span></td>
+              <td>도포 후 피부에 달라붙거나 미끄럽게 남는 불쾌한 잔여 정도</td>
+            </tr>
+            <tr>
+              <td><span class="cfa-guide-badge">유분감 / 번들거림 (Oiliness)</span></td>
+              <td>바른 후 느껴지는 오일리함과 피부 표면의 광택 정도</td>
+            </tr>
+            <tr>
+              <td><span class="cfa-guide-badge">수분감 / 촉촉함 (Moistness)</span></td>
+              <td>피부 속까지 충분한 수분이 채워지는 정도</td>
+            </tr>
+            <tr>
+              <td><span class="cfa-guide-badge">밀착감 (Adhesion)</span></td>
+              <td>피부에 들뜸 없이 얇고 고르게 밀착되는 느낌</td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <h5 style="margin-top: 20px;">2) 표준 9점 척도법 기준</h5>
+        <p style="font-size: 13px; color: rgba(255,255,255,0.7);">평가자는 각 항목에 대해 아래 9개의 단계 중 가장 적합한 점수를 선택합니다.</p>
+        <div class="cfa-guide-scale-box">
+          <div class="cfa-guide-scale-item"><span class="cfa-guide-scale-num">9점</span> 매우 [항목명] (예: 매우 끈적임, 매우 잘 발림)</div>
+          <div class="cfa-guide-scale-item"><span class="cfa-guide-scale-num">8점</span> 상당히 [항목명]</div>
+          <div class="cfa-guide-scale-item"><span class="cfa-guide-scale-num">7점</span> 보통 이상으로 [항목명]</div>
+          <div class="cfa-guide-scale-item"><span class="cfa-guide-scale-num">6점</span> 약간 [항목명]</div>
+          <div class="cfa-guide-scale-item"><span class="cfa-guide-scale-num">5점</span> 보통 (Neither/Neutral)</div>
+          <div class="cfa-guide-scale-item"><span class="cfa-guide-scale-num">4점</span> 약간 [반대 특성] (예: 약간 안 발림, 약간 산뜻함)</div>
+          <div class="cfa-guide-scale-item"><span class="cfa-guide-scale-num">3점</span> 보통 이상으로 [반대 특성]</div>
+          <div class="cfa-guide-scale-item"><span class="cfa-guide-scale-num">2점</span> 상당히 [반대 특성]</div>
+          <div class="cfa-guide-scale-item"><span class="cfa-guide-scale-num">1점</span> 전혀 [항목명] / 매우 [반대 특성] (예: 전혀 끈적이지 않음, 전혀 안 발림/매우 뻑뻑함)</div>
+        </div>
+        """, unsafe_allow_html=True)
+
     st.markdown("<br>", unsafe_allow_html=True)
     
     # ------------------------------------------------------------------
-    # 대화식 배합 피드객 및 조정 기능 (고도화 핵심 요구사항)
+    # 대화식 배합 피드백 및 조정 기능 (9점 척도법 튜닝 추가)
     # ------------------------------------------------------------------
     with st.container():
         st.markdown('<div class="cfa-feedback-container-marker" style="display:none;"></div>', unsafe_allow_html=True)
-        st.markdown("### ⚙️ 배합 커스텀 수정 피드백 루프")
-        st.write("처방된 배합이 마음에 들지 않거나, 특정 요구사항이 있으면 피드백을 전달해 주세요. AI가 배합 비율과 원료를 정교하게 다시 조정합니다.")
+        st.markdown("### ⚙️ 배합 커스텀 수정 및 품질 튜닝")
+        st.write("9점 척도 평가 결과를 바탕으로 조절하고 싶은 항목이 있으면 슬라이더를 조정하세요. 추가 요구사항(원료 가감, 단가 조절 등)이 있다면 아래 텍스트 칸에 작성해 함께 처방에 반영할 수 있습니다.")
         
+        raw_scores = {}
+        if isinstance(st.session_state.raw_formulation, dict):
+            raw_scores = st.session_state.raw_formulation.get("scores", {})
+            if hasattr(raw_scores, "model_dump"):
+                raw_scores = raw_scores.model_dump()
+        
+        # Defensive check
+        for key in ["spreadability", "absorbability", "stickiness", "oiliness", "moistness", "adhesion"]:
+            if key not in raw_scores:
+                raw_scores[key] = 5
+
+        # Slider columns
+        st.markdown("<b>🎯 타겟 품질 점수 설정</b> (슬라이더를 움직여 감촉/기능성 타겟을 설정하세요)", unsafe_allow_html=True)
+        col_slide_1, col_slide_2, col_slide_3 = st.columns(3)
+        col_slide_4, col_slide_5, col_slide_6 = st.columns(3)
+        
+        with col_slide_1:
+            target_spread = st.slider("발림성 타겟 (Spreadability)", 1, 9, int(raw_scores.get("spreadability", 5)), key="slide_spread")
+        with col_slide_2:
+            target_absorb = st.slider("흡수성 타겟 (Absorbability)", 1, 9, int(raw_scores.get("absorbability", 5)), key="slide_absorb")
+        with col_slide_3:
+            target_sticky = st.slider("끈적임 타겟 (Stickiness)", 1, 9, int(raw_scores.get("stickiness", 5)), key="slide_sticky")
+        with col_slide_4:
+            target_oily = st.slider("유분감 타겟 (Oiliness)", 1, 9, int(raw_scores.get("oiliness", 5)), key="slide_oily")
+        with col_slide_5:
+            target_moist = st.slider("수분감 타겟 (Moistness)", 1, 9, int(raw_scores.get("moistness", 5)), key="slide_moist")
+        with col_slide_6:
+            target_adhesion = st.slider("밀착감 타겟 (Adhesion)", 1, 9, int(raw_scores.get("adhesion", 5)), key="slide_adhesion")
+
         feedback_text = st.text_input(
-            "피드백 입력",
-            placeholder="예: '단가를 20% 낮추고 병풀 추출물을 2% 추가해줘', '사용감을 촉촉하게 개선하기 위해 보습제를 더 넣어줘'"
+            "기타 추가 요청 사항 (선택)",
+            placeholder="예: '단가를 20% 낮추고 병풀 추출물을 2% 추가해줘', '특정 방부제를 제외해줘' 등"
         )
         
-        if st.button("🔧 피드백 반영하여 처방 재설계", type="primary"):
-            if not feedback_text.strip():
-                st.warning("피드백 내용을 입력해 주세요.")
+        # Check adjustments
+        adjustments = []
+        if target_spread != raw_scores.get("spreadability", 5):
+            adjustments.append(f"발림성을 {target_spread}점으로 조정")
+        if target_absorb != raw_scores.get("absorbability", 5):
+            adjustments.append(f"흡수성을 {target_absorb}점으로 조정")
+        if target_sticky != raw_scores.get("stickiness", 5):
+            adjustments.append(f"끈적임/잔여감을 {target_sticky}점으로 조정")
+        if target_oily != raw_scores.get("oiliness", 5):
+            adjustments.append(f"유분감/번들거림을 {target_oily}점으로 조정")
+        if target_moist != raw_scores.get("moistness", 5):
+            adjustments.append(f"수분감/촉촉함을 {target_moist}점으로 조정")
+        if target_adhesion != raw_scores.get("adhesion", 5):
+            adjustments.append(f"밀착감을 {target_adhesion}점으로 조정")
+
+        if st.button("🔧 피드백 반영하여 처방 재설계", type="primary", use_container_width=True):
+            # Combine adjustments and text comment
+            final_feedback = ""
+            if adjustments:
+                final_feedback = "품질 특성 조정 요구사항: " + ", ".join(adjustments) + "."
+            
+            if feedback_text.strip():
+                if final_feedback:
+                    final_feedback += " 추가 요청: " + feedback_text.strip()
+                else:
+                    final_feedback = feedback_text.strip()
+            
+            if not final_feedback:
+                st.warning("타겟 점수를 조정하거나 피드백 텍스트를 입력해 주세요.")
             else:
                 placeholder = st.empty()
                 placeholder.markdown('''
@@ -1881,13 +2191,11 @@ elif st.session_state.step == 3:
                 
                 try:
                     # 피드백 수정 실행
-                    raw = refine_formulation(ftype, st.session_state.db, st.session_state.raw_formulation, feedback_text)
+                    raw = refine_formulation(ftype, st.session_state.db, st.session_state.raw_formulation, final_feedback)
                     st.session_state.raw_formulation = raw
                     
-                    df = normalize_and_cost(raw, st.session_state.db)
+                    df = normalize_and_cost(raw["ingredients"], st.session_state.db)
                     st.session_state.formulation = df
-                    
-                    # 제조 공정 및 분석 리포트 업데이트 생략 (요구사항 반영)
                     
                     placeholder.empty()
                     st.success("피드백이 성공적으로 반영되었습니다!")
