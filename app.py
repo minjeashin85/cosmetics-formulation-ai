@@ -687,9 +687,14 @@ textarea {
 [data-testid="stFileUploaderDropzone"] button,
 [data-testid="stFileUploader"] button {
     background-color: #ffffff !important;
+    color: #000000 !important;
 }
 [data-testid="stFileUploaderDropzone"] button *,
-[data-testid="stFileUploader"] button * {
+[data-testid="stFileUploader"] button *,
+[data-testid="stFileUploaderDropzone"] button span,
+[data-testid="stFileUploader"] button span,
+[data-testid="stFileUploaderDropzone"] button small,
+[data-testid="stFileUploader"] button small {
     color: #000000 !important;
     fill: #000000 !important;
 }
@@ -1158,10 +1163,10 @@ def render_donut_html(df):
         tip = f"{i}. {r['원료명']} | 배합비 {r['배합비(%)']:.2f}% | 중량 {r['중량(g)']:.2f}g | 단가 {r['단가(원/g)']:,.0f}원/g | 총원가 {r['총원가(원)']:,.0f}원"
         d = f"M{x1:.2f},{y1:.2f} A{r_outer},{r_outer} 0 {large} 1 {x2:.2f},{y2:.2f} L{xi1:.2f},{yi1:.2f} A{r_inner},{r_inner} 0 {large} 0 {xi2:.2f},{yi2:.2f} Z"
         segs += f'<path d="{d}" fill="{color}" opacity="0.88" stroke="white" stroke-width="1.5" class="cfa-seg" onmousemove="showTip(event, \'{tip}\')" onmouseleave="hideTip()"></path>'
-        if sweep > 12:
+        if sweep > 5:
             mid = (start_angle + end_angle) / 2
             lx, ly = polar(cx, cy, (r_outer+r_inner)/2, mid)
-            labels += f'<text x="{lx:.1f}" y="{ly:.1f}" text-anchor="middle" dominant-baseline="middle" font-size="10" fill="white" pointer-events="none" font-family="Inter,sans-serif">{i}. {r["원료명"]}</text>'
+            labels += f'<text x="{lx:.1f}" y="{ly:.1f}" text-anchor="middle" dominant-baseline="middle" font-size="12" fill="white" pointer-events="none" font-family="Inter,sans-serif" font-weight="700">{i}</text>'
         start_angle = end_angle
 
     total_cost = df["총원가(원)"].sum()
