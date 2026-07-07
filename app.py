@@ -685,16 +685,36 @@ textarea {
     color: #000000 !important;
 }
 [data-testid="stFileUploaderDropzone"] button,
-[data-testid="stFileUploader"] button {
+[data-testid="stFileUploaderDropzone"] label,
+[data-testid="stFileUploaderDropzone"] [role="button"],
+[data-testid="stFileUploaderDropzone"] [data-testid="stFileUploaderButton"],
+[data-testid="stFileUploader"] button,
+[data-testid="stFileUploader"] label,
+[data-testid="stFileUploader"] [role="button"] {
     background-color: #ffffff !important;
     color: #000000 !important;
 }
 [data-testid="stFileUploaderDropzone"] button *,
+[data-testid="stFileUploaderDropzone"] label *,
+[data-testid="stFileUploaderDropzone"] [role="button"] *,
+[data-testid="stFileUploaderDropzone"] [data-testid="stFileUploaderButton"] *,
 [data-testid="stFileUploader"] button *,
+[data-testid="stFileUploader"] label *,
+[data-testid="stFileUploader"] [role="button"] *,
 [data-testid="stFileUploaderDropzone"] button span,
-[data-testid="stFileUploader"] button span,
+[data-testid="stFileUploaderDropzone"] label span,
+[data-testid="stFileUploaderDropzone"] [role="button"] span,
+[data-testid="stFileUploaderDropzone"] [data-testid="stFileUploaderButton"] span,
 [data-testid="stFileUploaderDropzone"] button small,
-[data-testid="stFileUploader"] button small {
+[data-testid="stFileUploaderDropzone"] label small,
+[data-testid="stFileUploaderDropzone"] [role="button"] small,
+[data-testid="stFileUploaderDropzone"] [data-testid="stFileUploaderButton"] small,
+[data-testid="stFileUploader"] button span,
+[data-testid="stFileUploader"] label span,
+[data-testid="stFileUploader"] [role="button"] span,
+[data-testid="stFileUploader"] button small,
+[data-testid="stFileUploader"] label small,
+[data-testid="stFileUploader"] [role="button"] small {
     color: #000000 !important;
     fill: #000000 !important;
 }
@@ -830,14 +850,17 @@ def get_category_image_or_svg(category_id, default_svg):
         "ampoule": "logo_ampoule_trans.png",
         "cleanser": "logo_cleanser_trans.png",
     }
-    img_path = mapping.get(category_id)
-    if img_path and os.path.exists(img_path):
-        try:
-            with open(img_path, "rb") as f:
-                b64 = base64.b64encode(f.read()).decode("utf-8")
-            return f'<img src="data:image/png;base64,{b64}" class="cfa-category-img" style="width:100%; height:100%; object-fit:contain; border-radius:20px;" alt="{category_id}" />'
-        except Exception:
-            pass
+    img_name = mapping.get(category_id)
+    if img_name:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        img_path = os.path.join(script_dir, img_name)
+        if os.path.exists(img_path):
+            try:
+                with open(img_path, "rb") as f:
+                    b64 = base64.b64encode(f.read()).decode("utf-8")
+                return f'<img src="data:image/png;base64,{b64}" class="cfa-category-img" style="width:100%; height:100%; object-fit:contain; border-radius:20px;" alt="{category_id}" />'
+            except Exception:
+                pass
     return default_svg
 
 FORMULATION_TYPES = [
@@ -1268,7 +1291,8 @@ def zoom_dialog(img, caption):
 # ------------------------------------------------------------------
 import base64
 def load_logo_base64():
-    logo_path = "logo.png"
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    logo_path = os.path.join(script_dir, "logo.png")
     if os.path.exists(logo_path):
         with open(logo_path, "rb") as f:
             return base64.b64encode(f.read()).decode("utf-8")
