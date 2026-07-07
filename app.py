@@ -442,8 +442,7 @@ div[class*="stColumn"]:has(.cfa-tile-marker):hover .cfa-icon-wrap,
 div[data-testid="column"]:has(.cfa-tile-marker):hover .cfa-category-img,
 div[class*="stColumn"]:has(.cfa-tile-marker):hover .cfa-category-img,
 .stColumn:has(.cfa-tile-marker):hover .cfa-category-img {
-    transform: translateY(-8px) scale(1.08) !important;
-    filter: drop-shadow(0 15px 25px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 25px rgba(255, 0, 160, 0.5)) !important;
+    animation: cfaGlowPulse 1.6s infinite ease-in-out !important;
 }
 .cfa-name-pill {
     position: relative; overflow: hidden;
@@ -543,6 +542,22 @@ div[class*="st-key-btn_"] button {
     background: transparent !important;
     box-shadow: none !important;
     border-radius: 24px !important;
+}
+
+/* 3D 이미지 빛나는 호버 애니메이션 */
+@keyframes cfaGlowPulse {
+    0% {
+        transform: translateY(-4px) scale(1.04);
+        filter: drop-shadow(0 8px 12px rgba(0,0,0,0.4)) drop-shadow(0 0 10px rgba(255, 0, 160, 0.25)) brightness(1);
+    }
+    50% {
+        transform: translateY(-12px) scale(1.1);
+        filter: drop-shadow(0 18px 30px rgba(0,0,0,0.6)) drop-shadow(0 0 35px rgba(255, 0, 160, 0.75)) drop-shadow(0 0 45px rgba(255, 255, 255, 0.35)) brightness(1.28);
+    }
+    100% {
+        transform: translateY(-4px) scale(1.04);
+        filter: drop-shadow(0 8px 12px rgba(0,0,0,0.4)) drop-shadow(0 0 10px rgba(255, 0, 160, 0.25)) brightness(1);
+    }
 }
 
 /* SVG 아이콘 내부 부품 호버 애니메이션 */
