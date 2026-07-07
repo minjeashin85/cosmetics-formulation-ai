@@ -678,6 +678,19 @@ div[data-testid="stMarkdownContainer"] h1, div[data-testid="stMarkdownContainer"
 /* 텍스트 렌더링 카드 */
 .report-card { background: rgba(255,255,255,0.03); border-radius: 16px; border: 1px solid rgba(255,0,160,0.12); padding: 20px; line-height: 1.6; color:rgba(255,255,255,0.85); }
 .report-card h4 { font-family:'Space Grotesk',sans-serif; color: #ffffff; margin-top: 0; }
+
+/* 성분 입력란 및 파일 업로드 버튼 시인성 보정 (검은 글자색 지정) */
+textarea {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+}
+[data-testid="stFileUploaderDropzone"] button {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+}
+[data-testid="stFileUploaderDropzone"] button * {
+    color: #000000 !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -1071,13 +1084,13 @@ def normalize_and_cost(raw_items, db_df):
 def render_table_html(df):
     rows_html = ""
     prev_phase = None
-    for _, r in df.iterrows():
+    for i, (_, r) in enumerate(df.iterrows(), 1):
         phase_cell = r["상"] if r["상"] != prev_phase else ""
         prev_phase = r["상"]
         db_tag = f'<div class="dbtag">⚠️ {r["DB매칭"]}</div>' if r["DB매칭"] else ""
         rows_html += f'''<tr>
             <td class="phase">{phase_cell}</td>
-            <td class="name">{r["원료명"]}{db_tag}</td>
+            <td class="name">{i}. {r["원료명"]}{db_tag}</td>
             <td class="fn">{r["기능"]}</td>
             <td class="num">{r["배합비(%)"]:.2f}%</td>
             <td class="num">{r["중량(g)"]:.2f}g</td>
@@ -1131,7 +1144,7 @@ def render_donut_html(df):
     segs = ""
     labels = ""
     start_angle = 0
-    for _, r in df.iterrows():
+    for i, (_, r) in enumerate(df.iterrows(), 1):
         sweep = r["배합비(%)"] / 100 * 360
         end_angle = start_angle + sweep
         large = 1 if sweep > 180 else 0
@@ -1140,13 +1153,13 @@ def render_donut_html(df):
         xi1, yi1 = polar(cx, cy, r_inner, end_angle)
         xi2, yi2 = polar(cx, cy, r_inner, start_angle)
         color = phase_color[r["상"]]
-        tip = f"{r['원료명']} | 배합비 {r['배합비(%)']:.2f}% | 중량 {r['중량(g)']:.2f}g | 단가 {r['단가(원/g)']:,.0f}원/g | 총원가 {r['총원가(원)']:,.0f}원"
+        tip = f"{i}. {r['원료명']} | 배합비 {r['배합비(%)']:.2f}% | 중량 {r['중량(g)']:.2f}g | 단가 {r['단가(원/g)']:,.0f}원/g | 총원가 {r['총원가(원)']:,.0f}원"
         d = f"M{x1:.2f},{y1:.2f} A{r_outer},{r_outer} 0 {large} 1 {x2:.2f},{y2:.2f} L{xi1:.2f},{yi1:.2f} A{r_inner},{r_inner} 0 {large} 0 {xi2:.2f},{yi2:.2f} Z"
         segs += f'<path d="{d}" fill="{color}" opacity="0.88" stroke="white" stroke-width="1.5" class="cfa-seg" onmousemove="showTip(event, \'{tip}\')" onmouseleave="hideTip()"></path>'
         if sweep > 12:
             mid = (start_angle + end_angle) / 2
             lx, ly = polar(cx, cy, (r_outer+r_inner)/2, mid)
-            labels += f'<text x="{lx:.1f}" y="{ly:.1f}" text-anchor="middle" dominant-baseline="middle" font-size="10" fill="white" pointer-events="none" font-family="Inter,sans-serif">{r["원료명"]}</text>'
+            labels += f'<text x="{lx:.1f}" y="{ly:.1f}" text-anchor="middle" dominant-baseline="middle" font-size="10" fill="white" pointer-events="none" font-family="Inter,sans-serif">{i}. {r["원료명"]}</text>'
         start_angle = end_angle
 
     total_cost = df["총원가(원)"].sum()
